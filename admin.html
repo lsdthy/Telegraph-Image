@@ -1,132 +1,169 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telegraph-Image 沉浸式无缝画廊</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css"
     integrity="sha256-ghr1zmXTODLKl1HULQd6fq1MIe7m3FJiNTOCT8sddLM=" crossorigin="anonymous">
   <style>
-    .el-image__inner.el-image__inner {
-      width: 100%;
-      height: 90px;
-    }
-    .el-image {
-      text-align: center;
-    }
-    .el-button+.el-button {
+    body {
+      background: #000; /* 背景改为黑色，让无缝加载时更深邃沉浸 */
       margin: 0;
+      padding: 0;
+      font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
     }
+
+    /* 滚动条美化 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-corner { background-color: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background-color: rgba(255,255,255,0.3);
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-track { background-color: transparent; }
+
+    /* === 顶部导航栏 === */
+    .header-bar {
+      background: rgba(25, 25, 25, 0.9);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      padding: 15px 20px;
+      display: flex;
+      flex-wrap: wrap; /* 允许换行，防止窄屏挤压 */
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      border-bottom: 1px solid #333;
+    }
+    .header-bar div { color: #fff !important; }
+
+    /* === 核心：无缝全屏瀑布流布局 === */
+    .waterfall-container {
+      column-count: 5; /* 默认电脑端5列 */
+      column-gap: 0;   /* 【核心】列间距设为 0 */
+      padding: 0;      /* 【核心】容器内边距设为 0 */
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .waterfall-item {
+      break-inside: avoid; /* 防止元素被列截断 */
+      margin-bottom: 0;    /* 【核心】底部间距设为 0 */
+      border-radius: 0;    /* 【核心】去除圆角，实现直角拼接 */
+      overflow: hidden;
+      background: #000;
+      cursor: pointer;
+      position: relative;
+      /* 使用提亮代替上浮，防止遮挡相邻图片 */
+      filter: brightness(0.85); 
+      transition: filter 0.3s ease;
+    }
+
+    .waterfall-item:hover {
+      filter: brightness(1.1); /* 鼠标悬浮时提亮该图片 */
+      z-index: 2;
+    }
+
+    .waterfall-item .el-image, .waterfall-item video {
+      width: 100%;
+      display: block; /* 清除默认的图片底部留白 */
+      border: none;
+    }
+
+    /* === 响应式断点控制列数（全部强制 0 间距） === */
+    @media (max-width: 1400px) { 
+      .waterfall-container { column-count: 4; } 
+    }
+    @media (max-width: 1024px) { 
+      .waterfall-container { column-count: 3; } 
+    }
+    @media (max-width: 768px) { 
+      .waterfall-container { column-count: 2; } 
+      .header-bar { flex-direction: column; justify-content: center; text-align: center; }
+    }
+    @media (max-width: 480px) { 
+      .waterfall-container { column-count: 1; } 
+    }
+
+    /* 缺省提示页样式 */
+    .empty-state {
+      text-align: center;
+      padding: 120px 20px;
+      color: #999;
+    }
+    .empty-state i {
+      font-size: 80px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+    
+    /* 覆盖 el-select 等组件在深色背景下的默认颜色，让界面更协调 */
+    .el-input__inner { background-color: #333; color: #fff; border-color: #555; }
+    .el-button--info { background-color: #555; border-color: #555; }
   </style>
   <script src="https://js.sentry-cdn.com/219f636ac7bde5edab2c3e16885cb535.min.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
   <div id="app">
-    <el-container>
-      <el-header>
-        <div style="margin: auto; line-height: 60px; font-size: xx-large; position: relative;">Dashboard
-          <span style="position: absolute; right: 0px;">
-            <a href="./admin-imgtc.html"><el-button size="mini" type="warning">网格视图</el-button></a>
-            <a href="./admin-waterfall.html"><el-button size="mini" type="primary">瀑布流</el-button></a>
-            <el-button v-if="showLogoutButton" size="mini" type="info" @click="handleLogout()">退出登录</el-button>
-          </span>
-        </div>
-      </el-header>
-      <el-main>
-        <el-row :gutter="12">
-          <el-col :span="24">
-            <el-card shadow="always">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span>记录总数量: {{ Number }}</span>
-                
-                <div>
-                  <el-select v-model="selectedAlbum" size="small" style="width: 160px; margin-right: 15px;" placeholder="选择相册">
-                    <el-option label="所有相册" value="All"></el-option>
-                    <el-option label="未分类" value="None"></el-option>
-                    <el-option v-for="album in uniqueAlbums" :key="album" :label="album" :value="album"></el-option>
-                  </el-select>
+    
+    <div class="header-bar">
+      <div style="font-size: 24px; font-weight: bold; letter-spacing: 1px;">沉浸式画廊</div>
+      
+      <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+        <el-select v-model="selectedAlbum" size="small" style="width: 200px;" placeholder="请选择相册以浏览">
+          <el-option label="-- 请选择相册 --" value="" disabled></el-option>
+          <el-option label="所有相册 (全览)" value="All"></el-option>
+          <el-option label="未分类" value="None"></el-option>
+          <el-option v-for="album in uniqueAlbums" :key="album" :label="album" :value="album"></el-option>
+        </el-select>
+      </div>
 
-                  <el-radio-group v-model="filterType" size="small">
-                    <el-radio-button label="all">全部图片</el-radio-button>
-                    <el-radio-button label="original">仅看原图</el-radio-button>
-                    <el-radio-button label="preview">仅看压缩图</el-radio-button>
-                  </el-radio-group>
-                </div>
+      <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+        <a href="./admin.html"><el-button size="mini" type="success">列表管理</el-button></a>
+        <a href="./admin-imgtc.html"><el-button size="mini" type="warning">网格管理</el-button></a>
+        <el-button v-if="showLogoutButton" size="mini" type="info" @click="handleLogout()">退出</el-button>
+      </div>
+    </div>
 
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-        <template>
-          <el-table :data="filteredTableData" style="width: 100%">
-            <el-table-column label="name" prop="name">
-            </el-table-column>
-            <el-table-column label="preview" prop="preview" align="center">
-              <template slot-scope="scope">
-                <video v-if="scope.row.name.indexOf('.mp4')>0" style="width: 100%; height: 180px;" controls>
-                  <source :src="'/file/'+scope.row.name" type="video/mp4">
-                </video>
-                <el-image v-else style="width: 100%; height: 100%;" :src="'/file/'+scope.row.name" :zoom-rate="1.2"
-                  :preview-src-list="['/file/'+scope.row.name]" fit="cover" lazy />
-              </template>
-            </el-table-column>
-            <el-table-column label="data" prop="data">
-              <template slot-scope="scope">
-                <el-popover trigger="hover" placement="top">
-                  <p>{{ scope.row.metadata }}</p>
-                  <div slot="reference" class="name-wrapper">
-                    <el-tag size="small" type="success" style="margin-bottom: 5px;">
-                      相册: {{ (scope.row.metadata && scope.row.metadata.ListType !== 'None') ? scope.row.metadata.ListType : '未分类' }}
-                    </el-tag><br>
-                    <el-tag size="medium">{{ scope.row.metadata }}</el-tag>
-                  </div>
-                </el-popover>
-              </template>
-            </el-table-column>
-            <el-table-column align="right">
-              <template slot="header" slot-scope="scope">
-                <el-input v-model="search" @input="handleSearch" size="mini" placeholder="输入关键字搜索" />
-              </template>
-              <template slot-scope="scope">
-                <el-button size="mini" type="primary" @click="handleCopy(scope.$index,scope.row.name)">复制地址</el-button>
-                <el-button size="mini" type="primary" @click="handleWhite(scope.$index,scope.row.name)">白名单</el-button>
-                <el-button size="mini" type="info" @click="handleBlock(scope.$index,scope.row.name)">黑名单</el-button>
-                <el-button size="mini" type="danger" @click="handleDelete(scope.$index,scope.row.name)">删除</el-button>
-              </template>
-            </el-table-column>
-            </el-table>
-            <el-button v-if="nextCursor" style="margin-top:16px" @click="loadMore">加载更多</el-button>
-          </template>
-        </el-main>
-    </el-container>
+    <div class="empty-state" v-if="selectedAlbum === ''">
+      <i class="el-icon-picture-outline"></i>
+      <h2>请在上方下拉菜单中选择一个相册</h2>
+      <p style="color: #666;">选择相册后即可开启无缝全屏浏览体验</p>
+    </div>
+
+    <div class="waterfall-container" v-else>
+      <div class="waterfall-item" v-for="(item, index) in filteredTableData" :key="item.name">
+        <video v-if="item.name.indexOf('.mp4')>0" controls>
+          <source :src="'/file/'+item.name" type="video/mp4">
+        </video>
+        <el-image v-else :src="'/file/'+item.name" :preview-src-list="['/file/'+item.name]" lazy></el-image>
+      </div>
+    </div>
+
+    <div style="text-align: center; padding: 30px 0 50px 0;" v-if="selectedAlbum !== ''">
+      <el-button v-if="nextCursor" @click="loadMore" type="primary" round shadow>加载更多图片 ↓</el-button>
+      <span v-else style="color: #555; font-size: 14px;">已加载该相册的全部内容 ~</span>
+    </div>
+
   </div>
 </body>
 
-<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"
-  integrity="sha256-kXTEJcRFN330VirZFl6gj9+UM6gIKW195fYZeR3xDhc=" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js"
-  integrity="sha256-OFVFYfqhQ9nDnKh+NfIsefpy/fnjTwkK909ZYgo45nw=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js" crossorigin="anonymous"></script>
+
 <script>
-  var app = new Vue({
+  new Vue({
     el: '#app',
     data: {
-      filterType: 'all',
-      selectedAlbum: 'All', // 当前选择的相册
-      Number: 0,
-      WhiteList: 0,
-      BlackList: 0,
+      selectedAlbum: '', // 默认设为空，进入时不加载任何图片防止卡顿
       showLogoutButton: false,
       tableData: [],
       nextCursor: null,
-      dialogFormVisible: false,
-      formLabelWidth: '120px',
-      form: { name: '', id: '' },
-      search: '',
-      password: '123456',
-      searchTimer: null
     },
     computed: {
-      // 动态提取当前所有不重复的相册名
       uniqueAlbums() {
         const albums = new Set();
         this.tableData.forEach(item => {
@@ -136,125 +173,37 @@
         });
         return Array.from(albums);
       },
-      // 三重过滤：搜索词 + 画质类型 + 相册名
       filteredTableData() {
+        if (this.selectedAlbum === '') return [];
+
         return this.tableData.filter(data => {
-          // 1. 关键字过滤
-          const matchSearch = !this.search || data.name.toLowerCase().includes(this.search.toLowerCase());
-          
-          // 2. 原图/压缩图过滤
-          let matchType = true;
-          const metaStr = data.metadata ? JSON.stringify(data.metadata) : '';
-          const isOriginal = metaStr.includes('[原图]');
-          const isPreview = metaStr.includes('[预览图]');
-          const isLegacy = !isOriginal && !isPreview; 
-
-          if (this.filterType === 'original') {
-            matchType = isOriginal || isLegacy;
-          } else if (this.filterType === 'preview') {
-            matchType = isPreview;
-          }
-
-          // 3. 相册过滤
-          let matchAlbum = true;
           if (this.selectedAlbum !== 'All') {
             const itemAlbum = (data.metadata && data.metadata.ListType) ? data.metadata.ListType : 'None';
-            matchAlbum = (itemAlbum === this.selectedAlbum);
+            return itemAlbum === this.selectedAlbum;
           }
-
-          return matchSearch && matchType && matchAlbum;
+          return true; 
         });
       }
     },
     methods: {
-      handleBlock(index, key) {
-        if (confirm("确认加入黑名单吗?")) {
-          var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
-          fetch("./api/manage/block/" + key, requestOptions)
-            .then(response => response.text())
-            .then(result => { this.tableData[index].metadata = result; })
-            .catch(error => { alert("网络异常"); console.log(error) });
-        }
-      },
-      handleDelete(index, key) {
-        if (confirm("确认删除该条记录吗?")) {
-          var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
-          fetch("./api/manage/delete/" + key, requestOptions)
-            .then(response => response.text())
-            .then(result => { this.tableData.remove(index); })
-            .catch(error => { alert("网络异常"); console.log(error) });
-        }
-      },
-      handleWhite(index, key) {
-        if (confirm("确认加入白名单吗?")) {
-          var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
-          fetch("./api/manage/white/" + key, requestOptions)
-            .then(response => response.text())
-            .then(result => { this.tableData[index].metadata = result; })
-            .catch(error => { alert("网络异常"); console.log(error) });
-        }
-      },
       handleLogout() {
         window.location.href = "./api/manage/logout";
       },
-      handleCopy(index, key) {
-        const text = `${document.location.origin}/file/${key}`;
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(text);
-        } else {
-          const textarea = document.createElement('textarea');
-          document.body.appendChild(textarea);
-          textarea.style.position = 'fixed';
-          textarea.style.clip = 'rect(0 0 0 0)';
-          textarea.style.top = '10px';
-          textarea.value = text;
-          textarea.select();
-          document.execCommand('copy', true);
-          document.body.removeChild(textarea);
-        }
-        this.$message({ message: '复制文件链接成功~', type: 'success' });
-      },
-      handleSearch() {
-        clearTimeout(this.searchTimer);
-        this.searchTimer = setTimeout(() => {
-          this.tableData = [];
-          this.nextCursor = null;
-          const opts = { method: 'GET', redirect: 'follow', credentials: 'include' };
-          const base = this.search
-            ? `./api/manage/list?limit=100&prefix=${encodeURIComponent(this.search)}`
-            : `./api/manage/list?limit=100`;
-          fetch(base, opts)
-            .then(r => r.json())
-            .then(result => {
-              this.tableData = result.keys || [];
-              this.nextCursor = result.list_complete ? null : result.cursor;
-              this.Number = this.tableData.length;
-            })
-            .catch(() => alert("搜索失败，请检查网络"));
-        }, 300);
-      },
       loadMore() {
         const opts = { method: 'GET', redirect: 'follow', credentials: 'include' };
-        const base = this.search
-          ? `./api/manage/list?limit=100&prefix=${encodeURIComponent(this.search)}`
-          : `./api/manage/list?limit=100`;
-        const url = this.nextCursor
-          ? `${base}&cursor=${encodeURIComponent(this.nextCursor)}`
-          : base;
-
+        const url = `./api/manage/list?limit=100&cursor=${encodeURIComponent(this.nextCursor)}`;
         fetch(url, opts)
           .then(r => r.json())
           .then(result => {
             this.tableData = this.tableData.concat(result.keys || []);
             this.nextCursor = result.list_complete ? null : result.cursor;
-            this.Number = this.tableData.length;
           })
-          .catch(() => alert("同步失败，请检查网络"));
+          .catch(() => this.$message.error("加载失败，请检查网络"));
       },
     },
-
     mounted() {
       var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
+      
       fetch("./api/manage/check", requestOptions)
         .then(response => response.text())
         .then(result => {
@@ -263,32 +212,20 @@
           } else if (result != "Not using basic auth.") {
             window.location.href = "./api/manage/login";
           }
-        })
-        .catch(error => console.log('error', error));
-
-      Array.prototype.remove = function (from, to) {
-        var rest = this.slice((to || from) + 1 || this.length);
-        this.length = from < 0 ? this.length + from : from;
-        return this.push.apply(this, rest);
-      };
+        });
 
       fetch("./api/manage/list?limit=100", requestOptions)
         .then(response => {
           if (response.status == 401) {
-            alert("请先登录");
             window.location.href = "./api/manage/login";
-          }
-          else {
-            return response;
+          } else {
+            return response.json();
           }
         })
-        .then(response => response.json())
         .then(result => {
           this.tableData = result.keys || [];
           this.nextCursor = result.list_complete ? null : result.cursor;
-          this.Number = this.tableData.length;
-        })
-        .catch(error => console.log('error', error));
+        });
     }
   })
 </script>
