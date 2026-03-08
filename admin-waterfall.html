@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Telegraph-Image 沉浸式画廊</title>
+  <title>Telegraph-Image 响应式瀑布流</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css"
     integrity="sha256-ghr1zmXTODLKl1HULQd6fq1MIe7m3FJiNTOCT8sddLM=" crossorigin="anonymous">
   <style>
@@ -49,12 +49,12 @@
     .waterfall-item {
       break-inside: avoid; /* 防止元素被列截断 */
       margin-bottom: 15px;
+      position: relative;
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       background: #fff;
       transition: transform 0.3s ease, box-shadow 0.3s ease;
-      cursor: pointer;
     }
 
     .waterfall-item:hover {
@@ -62,10 +62,33 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.2);
     }
 
-    .waterfall-item .el-image {
+    .waterfall-item .el-image, .waterfall-item video {
       width: 100%;
       display: block;
     }
+
+    /* 悬浮信息遮罩层 */
+    .item-info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 15px 10px 10px 10px;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      z-index: 2; /* 确保悬浮层在图片上方 */
+    }
+
+    .waterfall-item:hover .item-info {
+      opacity: 1;
+    }
+
+    .info-left { display: flex; flex-direction: column; gap: 5px; }
+    .info-right { display: flex; gap: 5px; }
 
     /* === 响应式断点 === */
     @media (max-width: 1400px) { 
@@ -95,6 +118,7 @@
       font-size: 80px;
       color: #909399;
       margin-bottom: 20px;
+      display: block;
     }
 
   </style>
@@ -105,7 +129,7 @@
   <div id="app">
     
     <div class="header-bar">
-      <div style="font-size: 24px; font-weight: bold; color: #333;">沉浸式画廊</div>
+      <div style="font-size: 24px; font-weight: bold; color: #333;">Waterfall Gallery</div>
       
       <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
         <el-select v-model="selectedAlbum" size="small" style="width: 180px;" placeholder="请选择相册以浏览">
@@ -117,8 +141,8 @@
       </div>
 
       <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-        <a href="./admin.html"><el-button size="mini" type="success">列表管理</el-button></a>
-        <a href="./admin-imgtc.html"><el-button size="mini" type="warning">网格管理</el-button></a>
+        <a href="./admin.html"><el-button size="mini" type="success">列表视图</el-button></a>
+        <a href="./admin-imgtc.html"><el-button size="mini" type="warning">网格视图</el-button></a>
         <el-button v-if="showLogoutButton" size="mini" type="info" @click="handleLogout()">退出</el-button>
       </div>
     </div>
@@ -126,21 +150,38 @@
     <div class="empty-state" v-if="selectedAlbum === ''">
       <i class="el-icon-picture-outline"></i>
       <h2>请在上方下拉菜单中选择一个相册</h2>
-      <p>选择相册后即可开启沉浸式浏览体验</p>
+      <p>选择相册后即可开启浏览</p>
     </div>
 
     <div class="waterfall-container" v-else>
       <div class="waterfall-item" v-for="(item, index) in filteredTableData" :key="item.name">
+        
         <video v-if="item.name.indexOf('.mp4')>0" style="width: 100%; display: block;" controls>
           <source :src="'/file/'+item.name" type="video/mp4">
         </video>
         <el-image v-else :src="'/file/'+item.name" :preview-src-list="['/file/'+item.name]" lazy></el-image>
+
+        <div class="item-info">
+          <div class="info-left">
+            <el-tag size="mini" type="success" effect="dark" v-if="item.metadata && item.metadata.ListType && item.metadata.ListType !== 'None'">
+              {{ item.metadata.ListType }}
+            </el-tag>
+            <el-tag size="mini" type="info" effect="dark" v-else>未分类</el-tag>
+            <span style="color: #eee; font-size: 10px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              {{ item.metadata ? item.metadata.fileName : item.name }}
+            </span>
+          </div>
+          <div class="info-right">
+            <el-button type="primary" icon="el-icon-document-copy" circle size="mini" @click="handleCopy(item.name)" title="复制链接"></el-button>
+            <el-button type="danger" icon="el-icon-delete" circle size="mini" @click="handleDelete(index, item.name)" title="删除图片"></el-button>
+          </div>
+        </div>
       </div>
     </div>
 
     <div style="text-align: center; padding: 20px 0 40px 0;" v-if="selectedAlbum !== ''">
       <el-button v-if="nextCursor" @click="loadMore" type="primary" round shadow>加载更多图片 ↓</el-button>
-      <span v-else style="color: #888; font-size: 14px;">已加载该相册的全部内容 ~</span>
+      <span v-else style="color: #888; font-size: 14px;">没有更多内容啦 ~</span>
     </div>
 
   </div>
@@ -184,6 +225,37 @@
       }
     },
     methods: {
+      handleDelete(index, key) {
+        if (confirm("确认删除该图片吗?")) {
+          var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
+          fetch("./api/manage/delete/" + key, requestOptions)
+            .then(response => response.text())
+            .then(() => { 
+              // 从本地数据中移除
+              const realIndex = this.tableData.findIndex(item => item.name === key);
+              if(realIndex > -1) this.tableData.splice(realIndex, 1);
+              this.$message.success('删除成功');
+            })
+            .catch(error => alert("网络异常"));
+        }
+      },
+      handleCopy(key) {
+        const text = `${document.location.origin}/file/${key}`;
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(text);
+        } else {
+          const textarea = document.createElement('textarea');
+          document.body.appendChild(textarea);
+          textarea.style.position = 'fixed';
+          textarea.style.clip = 'rect(0 0 0 0)';
+          textarea.style.top = '10px';
+          textarea.value = text;
+          textarea.select();
+          document.execCommand('copy', true);
+          document.body.removeChild(textarea);
+        }
+        this.$message({ message: '复制链接成功', type: 'success' });
+      },
       handleLogout() {
         window.location.href = "./api/manage/logout";
       },
