@@ -10,11 +10,9 @@
       width: 100%;
       height: 90px;
     }
-
     .el-image {
       text-align: center;
     }
-
     .el-button+.el-button {
       margin: 0;
     }
@@ -26,37 +24,35 @@
   <div id="app">
     <el-container>
       <el-header>
-        <div style="
-         margin: auto;
-         line-height: 60px;
-         font-size: xx-large;
-         position: relative;
-     ">Dashboard
-
-
-          <span style="
-     position: absolute;
-     right: 0px;
-      ">
-            <a href="./admin-imgtc.html">
-              <el-button size="mini" type="warning">网格视图</el-button>
-            </a>
-            <a href="./admin-waterfall.html">
-              <el-button size="mini" type="primary">瀑布流</el-button>
-            </a>
-            <el-button v-if="showLogoutButton" size="mini" type="info" @click="handleLogout()">退出登录</el-button></span>
+        <div style="margin: auto; line-height: 60px; font-size: xx-large; position: relative;">Dashboard
+          <span style="position: absolute; right: 0px;">
+            <a href="./admin-imgtc.html"><el-button size="mini" type="warning">网格视图</el-button></a>
+            <a href="./admin-waterfall.html"><el-button size="mini" type="primary">瀑布流</el-button></a>
+            <el-button v-if="showLogoutButton" size="mini" type="info" @click="handleLogout()">退出登录</el-button>
+          </span>
         </div>
       </el-header>
-      <el-main><el-row :gutter="12">
+      <el-main>
+        <el-row :gutter="12">
           <el-col :span="24">
             <el-card shadow="always">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span>记录总数量: {{ Number }}</span>
-                <el-radio-group v-model="filterType" size="small">
-                  <el-radio-button label="all">全部图片</el-radio-button>
-                  <el-radio-button label="original">仅看原图</el-radio-button>
-                  <el-radio-button label="preview">仅看压缩图</el-radio-button>
-                </el-radio-group>
+                
+                <div>
+                  <el-select v-model="selectedAlbum" size="small" style="width: 160px; margin-right: 15px;" placeholder="选择相册">
+                    <el-option label="所有相册" value="All"></el-option>
+                    <el-option label="未分类" value="None"></el-option>
+                    <el-option v-for="album in uniqueAlbums" :key="album" :label="album" :value="album"></el-option>
+                  </el-select>
+
+                  <el-radio-group v-model="filterType" size="small">
+                    <el-radio-button label="all">全部图片</el-radio-button>
+                    <el-radio-button label="original">仅看原图</el-radio-button>
+                    <el-radio-button label="preview">仅看压缩图</el-radio-button>
+                  </el-radio-group>
+                </div>
+
               </div>
             </el-card>
           </el-col>
@@ -72,7 +68,6 @@
                 </video>
                 <el-image v-else style="width: 100%; height: 100%;" :src="'/file/'+scope.row.name" :zoom-rate="1.2"
                   :preview-src-list="['/file/'+scope.row.name]" fit="cover" lazy />
-
               </template>
             </el-table-column>
             <el-table-column label="data" prop="data">
@@ -80,6 +75,9 @@
                 <el-popover trigger="hover" placement="top">
                   <p>{{ scope.row.metadata }}</p>
                   <div slot="reference" class="name-wrapper">
+                    <el-tag size="small" type="success" style="margin-bottom: 5px;">
+                      相册: {{ (scope.row.metadata && scope.row.metadata.ListType !== 'None') ? scope.row.metadata.ListType : '未分类' }}
+                    </el-tag><br>
                     <el-tag size="medium">{{ scope.row.metadata }}</el-tag>
                   </div>
                 </el-popover>
@@ -103,6 +101,7 @@
     </el-container>
   </div>
 </body>
+
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"
   integrity="sha256-kXTEJcRFN330VirZFl6gj9+UM6gIKW195fYZeR3xDhc=" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js"
@@ -111,7 +110,8 @@
   var app = new Vue({
     el: '#app',
     data: {
-      filterType: 'all', // 新增：保存当前的过滤状态
+      filterType: 'all',
+      selectedAlbum: 'All', // 当前选择的相册
       Number: 0,
       WhiteList: 0,
       BlackList: 0,
@@ -120,102 +120,79 @@
       nextCursor: null,
       dialogFormVisible: false,
       formLabelWidth: '120px',
-      form: {
-        name: '',
-        id: ''
-      },
+      form: { name: '', id: '' },
       search: '',
       password: '123456',
       searchTimer: null
     },
-    // 新增：利用计算属性实现双重过滤（搜索 + 图片类型）
     computed: {
+      // 动态提取当前所有不重复的相册名
+      uniqueAlbums() {
+        const albums = new Set();
+        this.tableData.forEach(item => {
+          if (item.metadata && item.metadata.ListType && item.metadata.ListType !== 'None') {
+            albums.add(item.metadata.ListType);
+          }
+        });
+        return Array.from(albums);
+      },
+      // 三重过滤：搜索词 + 画质类型 + 相册名
       filteredTableData() {
         return this.tableData.filter(data => {
-          // 1. 关键字搜索过滤
+          // 1. 关键字过滤
           const matchSearch = !this.search || data.name.toLowerCase().includes(this.search.toLowerCase());
           
-          // 2. 原图/压缩图分类过滤
+          // 2. 原图/压缩图过滤
           let matchType = true;
-          // 将 metadata 转为字符串方便判断匹配
           const metaStr = data.metadata ? JSON.stringify(data.metadata) : '';
           const isOriginal = metaStr.includes('[原图]');
           const isPreview = metaStr.includes('[预览图]');
-          const isLegacy = !isOriginal && !isPreview; // 兼容以前上传的没有标签的老图片
+          const isLegacy = !isOriginal && !isPreview; 
 
           if (this.filterType === 'original') {
-            matchType = isOriginal || isLegacy; // 看原图时也显示旧图
+            matchType = isOriginal || isLegacy;
           } else if (this.filterType === 'preview') {
             matchType = isPreview;
           }
 
-          return matchSearch && matchType;
+          // 3. 相册过滤
+          let matchAlbum = true;
+          if (this.selectedAlbum !== 'All') {
+            const itemAlbum = (data.metadata && data.metadata.ListType) ? data.metadata.ListType : 'None';
+            matchAlbum = (itemAlbum === this.selectedAlbum);
+          }
+
+          return matchSearch && matchType && matchAlbum;
         });
       }
     },
     methods: {
       handleBlock(index, key) {
-        console.log(key);
         if (confirm("确认加入黑名单吗?")) {
-          console.log("Yes")
-          var requestOptions = {
-            method: 'GET',
-            redirect: 'follow',
-            //include authorization credientials
-            credentials: 'include'
-          };
-
+          var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
           fetch("./api/manage/block/" + key, requestOptions)
             .then(response => response.text())
-            .then(result => {
-              console.log(result);
-              this.tableData[index].metadata = result;
-            })
-            .catch(error => { alert("An error occurred while synchronizing data with the server, please check the network connection"); console.log('error', error) });
-
-        } else {
-          console.log("No")
+            .then(result => { this.tableData[index].metadata = result; })
+            .catch(error => { alert("网络异常"); console.log(error) });
         }
       },
       handleDelete(index, key) {
-        console.log(key);
         if (confirm("确认删除该条记录吗?")) {
-          console.log("Yes")
-          var requestOptions = {
-            method: 'GET',
-            redirect: 'follow',
-            //include authorization credientials
-            credentials: 'include'
-          };
-
+          var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
           fetch("./api/manage/delete/" + key, requestOptions)
             .then(response => response.text())
-            .then(result => { console.log(result); this.tableData.remove(index); })
-            .catch(error => { alert("An error occurred while synchronizing data with the server, please check the network connection"); console.log('error', error) });
-
-        } else {
-          console.log("No")
+            .then(result => { this.tableData.remove(index); })
+            .catch(error => { alert("网络异常"); console.log(error) });
         }
       },
       handleWhite(index, key) {
-        console.log(key);
         if (confirm("确认加入白名单吗?")) {
-          console.log("Yes")
-          var requestOptions = {
-            method: 'GET',
-            redirect: 'follow',
-            //include authorization credientials
-            credentials: 'include'
-          };
+          var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
           fetch("./api/manage/white/" + key, requestOptions)
             .then(response => response.text())
-            .then(result => { console.log(result); this.tableData[index].metadata = result; })
-            .catch(error => { alert("An error occurred while synchronizing data with the server, please check the network connection"); console.log('error', error) });
-
-        } else {
-          console.log("No")
+            .then(result => { this.tableData[index].metadata = result; })
+            .catch(error => { alert("网络异常"); console.log(error) });
         }
-
       },
       handleLogout() {
         window.location.href = "./api/manage/logout";
@@ -223,28 +200,19 @@
       handleCopy(index, key) {
         const text = `${document.location.origin}/file/${key}`;
         if (navigator.clipboard) {
-          // clipboard api 复制
           navigator.clipboard.writeText(text);
         } else {
           const textarea = document.createElement('textarea');
           document.body.appendChild(textarea);
-          // 隐藏此输入框
           textarea.style.position = 'fixed';
           textarea.style.clip = 'rect(0 0 0 0)';
           textarea.style.top = '10px';
-          // 赋值
           textarea.value = text;
-          // 选中
           textarea.select();
-          // 复制
           document.execCommand('copy', true);
-          // 移除输入框
           document.body.removeChild(textarea);
         }
-        this.$message({
-          message: '复制文件链接成功~',
-          type: 'success'
-        });
+        this.$message({ message: '复制文件链接成功~', type: 'success' });
       },
       handleSearch() {
         clearTimeout(this.searchTimer);
@@ -286,47 +254,25 @@
     },
 
     mounted() {
-      //check if the user is logged in
-      //read the basic auth credientials from the browser
-      var requestOptions = {
-        method: 'GET',
-        redirect: 'follow',
-        //include authorization credientials
-        credentials: 'include'
-      };
+      var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
       fetch("./api/manage/check", requestOptions)
         .then(response => response.text())
         .then(result => {
-          console.log(result);
           if (result == "true") {
             this.showLogoutButton = true;
-          } else if (result == "Not using basic auth.") {
-
-          }
-          else {
+          } else if (result != "Not using basic auth.") {
             window.location.href = "./api/manage/login";
           }
         })
-        .catch(error => { alert("An error occurred while synchronizing data with the server, please check the network connection"); console.log('error', error) });
-
-
+        .catch(error => console.log('error', error));
 
       Array.prototype.remove = function (from, to) {
         var rest = this.slice((to || from) + 1 || this.length);
         this.length = from < 0 ? this.length + from : from;
         return this.push.apply(this, rest);
       };
-      var requestOptions = {
-        method: 'GET',
-        redirect: 'follow',
-        //include authorization credientials
-        credentials: 'include'
 
-      };
-
-
-        fetch("./api/manage/list?limit=100", requestOptions)
-        //判断是否需要登录
+      fetch("./api/manage/list?limit=100", requestOptions)
         .then(response => {
           if (response.status == 401) {
             alert("请先登录");
@@ -340,30 +286,10 @@
         .then(result => {
           this.tableData = result.keys || [];
           this.nextCursor = result.list_complete ? null : result.cursor;
-          console.log(result);
           this.Number = this.tableData.length;
         })
-        .catch(error => { alert("An error occurred while synchronizing data with the server, please check the network connection"); console.log('error', error) });
-
+        .catch(error => console.log('error', error));
     }
   })
-
-</script><script>
-    (function (h, o, t, j, a, r) {
-      h.hj = h.hj || function () { (h.hj.q = h.hj.q || []).push(arguments) };
-      h._hjSettings = { hjid: 2531461, hjsv: 6 };
-      a = o.getElementsByTagName('head')[0];
-      r = o.createElement('script'); r.async = 1;
-      r.src = t + h._hjSettings.hjid + j + h._hjSettings.hjsv;
-      a.appendChild(r);
-    })(window, document, 'https://static.hotjar.com/c/hotjar-', '.js?sv=');
 </script>
-<script type="text/javascript">
-  (function (c, l, a, r, i, t, y) {
-    c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
-    t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
-    y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
-  })(window, document, "clarity", "script", "7t5ai7agat");
-</script>
-
 </html>
