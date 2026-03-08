@@ -3,7 +3,6 @@
 
 <head>
   <meta charset="UTF-8">
-  <!-- import CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css"
     integrity="sha256-ghr1zmXTODLKl1HULQd6fq1MIe7m3FJiNTOCT8sddLM=" crossorigin="anonymous">
   <style>
@@ -51,30 +50,19 @@
       <el-main><el-row :gutter="12">
           <el-col :span="24">
             <el-card shadow="always">
-              记录总数量:
-              {{ Number }}
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>记录总数量: {{ Number }}</span>
+                <el-radio-group v-model="filterType" size="small">
+                  <el-radio-button label="all">全部图片</el-radio-button>
+                  <el-radio-button label="original">仅看原图</el-radio-button>
+                  <el-radio-button label="preview">仅看压缩图</el-radio-button>
+                </el-radio-group>
+              </div>
             </el-card>
           </el-col>
-          <!--<el-col :span="8">
-              <el-card shadow="hover">
-                <el-tooltip class="item" effect="dark" content="白名单数量" placement="top-start">
-                   
-                </el-tooltip>
-                白名单数量：{{ WhiteList }}
-              </el-card>
-            </el-col>
-            <el-col :span="8">
-              <el-card shadow="hover">
-                <el-tooltip class="item" effect="dark" content="黑名单数量" placement="top-start">
-                
-              </el-tooltip>
-              黑名单数量：{{ BlackList }}
-              </el-card>
-            </el-col>-->
         </el-row>
         <template>
-          <el-table :data="tableData.filter(data => !search || data.name.toLowerCase().includes(search.toLowerCase()))"
-            style="width: 100%">
+          <el-table :data="filteredTableData" style="width: 100%">
             <el-table-column label="name" prop="name">
             </el-table-column>
             <el-table-column label="preview" prop="preview" align="center">
@@ -115,22 +103,21 @@
     </el-container>
   </div>
 </body>
-<!-- import Vue before Element -->
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"
   integrity="sha256-kXTEJcRFN330VirZFl6gj9+UM6gIKW195fYZeR3xDhc=" crossorigin="anonymous"></script>
-<!-- import JavaScript -->
 <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js"
   integrity="sha256-OFVFYfqhQ9nDnKh+NfIsefpy/fnjTwkK909ZYgo45nw=" crossorigin="anonymous"></script>
 <script>
   var app = new Vue({
     el: '#app',
     data: {
+      filterType: 'all', // 新增：保存当前的过滤状态
       Number: 0,
       WhiteList: 0,
-        BlackList: 0,
-        showLogoutButton: false,
-        tableData: [],
-        nextCursor: null,
+      BlackList: 0,
+      showLogoutButton: false,
+      tableData: [],
+      nextCursor: null,
       dialogFormVisible: false,
       formLabelWidth: '120px',
       form: {
@@ -140,6 +127,31 @@
       search: '',
       password: '123456',
       searchTimer: null
+    },
+    // 新增：利用计算属性实现双重过滤（搜索 + 图片类型）
+    computed: {
+      filteredTableData() {
+        return this.tableData.filter(data => {
+          // 1. 关键字搜索过滤
+          const matchSearch = !this.search || data.name.toLowerCase().includes(this.search.toLowerCase());
+          
+          // 2. 原图/压缩图分类过滤
+          let matchType = true;
+          // 将 metadata 转为字符串方便判断匹配
+          const metaStr = data.metadata ? JSON.stringify(data.metadata) : '';
+          const isOriginal = metaStr.includes('[原图]');
+          const isPreview = metaStr.includes('[预览图]');
+          const isLegacy = !isOriginal && !isPreview; // 兼容以前上传的没有标签的老图片
+
+          if (this.filterType === 'original') {
+            matchType = isOriginal || isLegacy; // 看原图时也显示旧图
+          } else if (this.filterType === 'preview') {
+            matchType = isPreview;
+          }
+
+          return matchSearch && matchType;
+        });
+      }
     },
     methods: {
       handleBlock(index, key) {
@@ -336,8 +348,7 @@
     }
   })
 
-</script><!-- Hotjar Tracking Code -->
-<script>
+</script><script>
     (function (h, o, t, j, a, r) {
       h.hj = h.hj || function () { (h.hj.q = h.hj.q || []).push(arguments) };
       h._hjSettings = { hjid: 2531461, hjsv: 6 };
