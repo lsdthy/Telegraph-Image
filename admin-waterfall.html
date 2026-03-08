@@ -1,149 +1,291 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Waterfall</title>
-<style>
-  body{
-    background: linear-gradient(90deg, #ffd7e4 0%, #c8f1ff 100%);
-  }
-  ::-webkit-scrollbar {
-	width: 8px;
-	height: 8px;
-}
+  <title>Telegraph-Image 响应式瀑布流</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css"
+    integrity="sha256-ghr1zmXTODLKl1HULQd6fq1MIe7m3FJiNTOCT8sddLM=" crossorigin="anonymous">
+  <style>
+    body {
+      background: linear-gradient(90deg, #ffd7e4 0%, #c8f1ff 100%);
+      margin: 0;
+      padding: 0;
+      font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+    }
 
- ::-webkit-scrollbar-corner {
-	background-color: transparent;
-}
+    /* 滚动条美化 */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-corner { background-color: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background-color: #49b1f5;
+      background-image: -webkit-linear-gradient(45deg, hsla(0, 0%, 100%, .4) 25%, transparent 0, transparent 50%, hsla(0, 0%, 100%, .4) 0, hsla(0, 0%, 100%, .4) 75%, transparent 0, transparent);
+      border-radius: 2em;
+    }
+    ::-webkit-scrollbar-track { background-color: rgba(73, 177, 245, .2); border-radius: 2em; }
 
- ::-webkit-scrollbar-thumb {
-	background-color: #49b1f5;
-	background-image: -webkit-linear-gradient(45deg, hsla(0, 0%, 100%, .4) 25%, transparent 0, transparent 50%, hsla(0, 0%, 100%, .4) 0, hsla(0, 0%, 100%, .4) 75%, transparent 0, transparent);
-	border-radius: 2em;
-}
+    .header-bar {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+      padding: 0 20px;
+      line-height: 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
 
- ::-webkit-scrollbar-track {
-	background-color: rgba(73, 177, 245, .2);
-	border-radius: 2em;
-}
-  .box {
+    /* === 核心：纯 CSS 响应式瀑布流布局 === */
+    .waterfall-container {
+      column-count: 5; /* 默认电脑端5列 */
+      column-gap: 15px;
+      padding: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .waterfall-item {
+      break-inside: avoid; /* 防止元素被列截断 */
+      margin-bottom: 15px;
       position: relative;
-  }
-  img {
-      width: 200px;
-      height: auto;
-      padding: 5px;
-	  margin-left: 1.25%;
-      border-radius: 20px;
-  }
-  #bigimg {
-	display: none;
-	position: fixed;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	background-color: rgba(0, 0, 0, 0.5);
-}
-#bigimg img {
-	position: absolute;
-	width: 90%;
-	height: 100%;
-	top: 50%;
-	left: 50%;
-	object-fit: contain;
-	transform: translate(-50%, -50%);
-}
-</style>
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background: #fff;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .waterfall-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+    .waterfall-item .el-image {
+      width: 100%;
+      display: block;
+    }
+
+    /* 悬浮信息遮罩层 */
+    .item-info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 15px 10px 10px 10px;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .waterfall-item:hover .item-info {
+      opacity: 1;
+    }
+
+    .info-left { display: flex; flex-direction: column; gap: 5px; }
+    .info-right { display: flex; gap: 5px; }
+
+    /* === 响应式断点控制列数 === */
+    @media (max-width: 1400px) { .waterfall-container { column-count: 4; } }
+    @media (max-width: 1024px) { .waterfall-container { column-count: 3; } }
+    @media (max-width: 768px) { .waterfall-container { column-count: 2; padding: 10px; } .waterfall-item { margin-bottom: 10px; border-radius: 8px;} }
+    @media (max-width: 480px) { .waterfall-container { column-count: 2; column-gap: 8px; padding: 8px; } .waterfall-item { margin-bottom: 8px; } }
+
+  </style>
+  <script src="https://js.sentry-cdn.com/219f636ac7bde5edab2c3e16885cb535.min.js" crossorigin="anonymous"></script>
 </head>
+
 <body>
-  <div class="box"></div>
-  <button id="loadMore" style="display:block;margin:16px auto;" onclick="loadMore()">加载更多</button>
-  <!-- 放大遮罩层 -->
-    <div id="bigimg" onclick="closeBigImg();"></div>
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
-<script>
-  var cursor = null;
-  function loadMore(){
-    $.ajax({
-      url: cursor
-        ? "./api/manage/list?cursor=" + encodeURIComponent(cursor)
-        : "./api/manage/list?limit=100",
-      dataType: "json",
-      success: function(data){
-        cursor = data.list_complete ? null : data.cursor;
-        var images = data.keys || [];
-        var targetElement = document.querySelector('.box');
-        let str = '';
-        for (let i = 0; i < images.length; i++){
-          if(images[i].name.indexOf('.mp4')>0) continue;
-          str += '<img onclick="showBigImg(this)" data-original="/file/'+images[i].name+'" src="/file/'+images[i].name+'">';
-        }
-        targetElement.insertAdjacentHTML('beforeend', str);
-        if(!cursor){ document.getElementById('loadMore').style.display='none'; }
-      },
-      error: function(){ alert("同步失败，请检查网络"); }
-    });
-  }
-  loadMore();
-</script>
+  <div id="app">
+    
+    <div class="header-bar">
+      <div style="font-size: 24px; font-weight: bold; color: #333;">Waterfall Gallery</div>
+      
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <el-select v-model="selectedAlbum" size="small" style="width: 140px;" placeholder="选择相册">
+          <el-option label="所有相册" value="All"></el-option>
+          <el-option label="未分类" value="None"></el-option>
+          <el-option v-for="album in uniqueAlbums" :key="album" :label="album" :value="album"></el-option>
+        </el-select>
+
+        <el-radio-group v-model="filterType" size="small">
+          <el-radio-button label="all">全部</el-radio-button>
+          <el-radio-button label="original">原图</el-radio-button>
+          <el-radio-button label="preview">压缩图</el-radio-button>
+        </el-radio-group>
+      </div>
+
+      <div>
+        <a href="./admin.html"><el-button size="mini" type="success">列表视图</el-button></a>
+        <a href="./admin-imgtc.html"><el-button size="mini" type="warning">网格视图</el-button></a>
+        <el-button v-if="showLogoutButton" size="mini" type="info" @click="handleLogout()">退出</el-button>
+      </div>
+    </div>
+
+    <div class="waterfall-container">
+      <div class="waterfall-item" v-for="(item, index) in filteredTableData" :key="item.name">
+        
+        <video v-if="item.name.indexOf('.mp4')>0" style="width: 100%; display: block;" controls>
+          <source :src="'/file/'+item.name" type="video/mp4">
+        </video>
+        <el-image v-else :src="'/file/'+item.name" :preview-src-list="['/file/'+item.name]" lazy></el-image>
+
+        <div class="item-info">
+          <div class="info-left">
+            <el-tag size="mini" type="success" effect="dark" v-if="item.metadata && item.metadata.ListType && item.metadata.ListType !== 'None'">
+              {{ item.metadata.ListType }}
+            </el-tag>
+            <el-tag size="mini" type="info" effect="dark" v-else>未分类</el-tag>
+            <span style="color: #eee; font-size: 10px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              {{ item.metadata ? item.metadata.fileName : item.name }}
+            </span>
+          </div>
+          <div class="info-right">
+            <el-button type="primary" icon="el-icon-document-copy" circle size="mini" @click="handleCopy(item.name)" title="复制链接"></el-button>
+            <el-button type="danger" icon="el-icon-delete" circle size="mini" @click="handleDelete(index, item.name)" title="删除图片"></el-button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center; padding: 20px 0 40px 0;">
+      <el-button v-if="nextCursor" @click="loadMore" type="primary" round shadow>加载更多图片 ↓</el-button>
+      <span v-else style="color: #888; font-size: 14px;">没有更多内容啦 ~</span>
+    </div>
+
+  </div>
 </body>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js" crossorigin="anonymous"></script>
+
 <script>
-  window.onload = $(function () {
-      // 获取图片的宽度(200px)
-      let imgWidth = $('img').outerWidth(); // 200
-      //console.log(imgWidth)
-      waterfallHandler();
-
-      // 瀑布流处理
-      function waterfallHandler() {
-          // 获取图片的列数
-          let column = parseInt($(window).width() / imgWidth);
-          //console.log(column)
-          // 高度数组
-          let heightArr = [];
-          for(let i=0; i<column; i++) {
-              heightArr[i] = 0;
+  new Vue({
+    el: '#app',
+    data: {
+      filterType: 'all',
+      selectedAlbum: 'All', 
+      showLogoutButton: false,
+      tableData: [],
+      nextCursor: null,
+    },
+    computed: {
+      // 提取所有相册名
+      uniqueAlbums() {
+        const albums = new Set();
+        this.tableData.forEach(item => {
+          if (item.metadata && item.metadata.ListType && item.metadata.ListType !== 'None') {
+            albums.add(item.metadata.ListType);
           }
-          $.each($('img'), function (index, item) {
-              // 当前元素的高度
-              let itemHeight = $(item).outerHeight();
-              // 高度数组最小的高度
-              let minHeight = Math.min(...heightArr);
-              // 高度数组最小的高度的索引
-              let minIndex = heightArr.indexOf(minHeight);
-              $(item).css({
-                  position: 'absolute',
-                  top: minHeight + 'px',
-                  left: minIndex * imgWidth + 'px'
-              });
+        });
+        return Array.from(albums);
+      },
+      // 图片分类过滤逻辑 (兼容原图/预览图和相册筛选)
+      filteredTableData() {
+        return this.tableData.filter(data => {
+          let matchType = true;
+          const metaStr = data.metadata ? JSON.stringify(data.metadata) : '';
+          const isOriginal = metaStr.includes('[原图]');
+          const isPreview = metaStr.includes('[预览图]');
+          const isLegacy = !isOriginal && !isPreview; 
 
-              heightArr[minIndex] += itemHeight;
-          });
+          if (this.filterType === 'original') {
+            matchType = isOriginal || isLegacy;
+          } else if (this.filterType === 'preview') {
+            matchType = isPreview;
+          }
+
+          let matchAlbum = true;
+          if (this.selectedAlbum !== 'All') {
+            const itemAlbum = (data.metadata && data.metadata.ListType) ? data.metadata.ListType : 'None';
+            matchAlbum = (itemAlbum === this.selectedAlbum);
+          }
+
+          return matchType && matchAlbum;
+        });
       }
+    },
+    methods: {
+      handleDelete(index, key) {
+        if (confirm("确认删除该图片吗?")) {
+          var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
+          fetch("./api/manage/delete/" + key, requestOptions)
+            .then(response => response.text())
+            .then(() => { 
+              // 从本地数据中移除
+              const realIndex = this.tableData.findIndex(item => item.name === key);
+              if(realIndex > -1) this.tableData.splice(realIndex, 1);
+              this.$message.success('删除成功');
+            })
+            .catch(error => alert("网络异常"));
+        }
+      },
+      handleCopy(key) {
+        const text = `${document.location.origin}/file/${key}`;
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(text);
+        } else {
+          const textarea = document.createElement('textarea');
+          document.body.appendChild(textarea);
+          textarea.style.position = 'fixed';
+          textarea.style.clip = 'rect(0 0 0 0)';
+          textarea.style.top = '10px';
+          textarea.value = text;
+          textarea.select();
+          document.execCommand('copy', true);
+          document.body.removeChild(textarea);
+        }
+        this.$message({ message: '复制链接成功', type: 'success' });
+      },
+      handleLogout() {
+        window.location.href = "./api/manage/logout";
+      },
+      loadMore() {
+        const opts = { method: 'GET', redirect: 'follow', credentials: 'include' };
+        const url = `./api/manage/list?limit=100&cursor=${encodeURIComponent(this.nextCursor)}`;
+        fetch(url, opts)
+          .then(r => r.json())
+          .then(result => {
+            this.tableData = this.tableData.concat(result.keys || []);
+            this.nextCursor = result.list_complete ? null : result.cursor;
+          })
+          .catch(() => this.$message.error("加载失败，请检查网络"));
+      },
+    },
+    mounted() {
+      var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
+      
+      // 检查登录状态
+      fetch("./api/manage/check", requestOptions)
+        .then(response => response.text())
+        .then(result => {
+          if (result == "true") {
+            this.showLogoutButton = true;
+          } else if (result != "Not using basic auth.") {
+            window.location.href = "./api/manage/login";
+          }
+        });
 
-      // 窗口大小改变
-      $(window).resize(function () {
-          waterfallHandler();
-      });
-  });
-  function showBigImg(img) {
-	var bigImg = document.getElementById('bigimg');
-	var imgUrl = img.getAttribute('data-original');
-	bigImg.innerHTML = '<img src="' + imgUrl + '">';
-	bigImg.style.display = 'block';
-	// 获取屏幕的宽度和高度
-	//var screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-	//var screenHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-	//bigImg.style.maxWidth = screenWidth * 0.9 + 'px';
-	//bigImg.style.maxHeight = screenHeight * 0.9 + 'px';
-}
-
-function closeBigImg() {
-	var bigImg = document.getElementById('bigimg');
-	bigImg.style.display = 'none';
-	bigImg.innerHTML = '';
-}
+      // 初始化加载数据
+      fetch("./api/manage/list?limit=100", requestOptions)
+        .then(response => {
+          if (response.status == 401) {
+            window.location.href = "./api/manage/login";
+          } else {
+            return response.json();
+          }
+        })
+        .then(result => {
+          this.tableData = result.keys || [];
+          this.nextCursor = result.list_complete ? null : result.cursor;
+        });
+    }
+  })
 </script>
 </html>
