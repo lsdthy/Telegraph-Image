@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ImgTC | Admin</title>
-  <!-- Import CSS -->
   <link rel="stylesheet" href="./admin-imgtc.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
@@ -33,6 +32,18 @@
                 </el-dropdown-menu>
               </el-dropdown>
             </el-tooltip>
+
+            <el-tooltip content="相册分类" placement="bottom">
+              <el-dropdown @command="selectAlbum" :hide-on-click="false">
+                <span class="el-dropdown-link"><i class="fas fa-images"></i></span>
+                <el-dropdown-menu slot="dropdown">
+                  <el-dropdown-item command="All" :class="{ 'el-dropdown-menu__item--selected': selectedAlbum === 'All' }"><i class="fas fa-layer-group"></i> 全部相册</el-dropdown-item>
+                  <el-dropdown-item command="None" :class="{ 'el-dropdown-menu__item--selected': selectedAlbum === 'None' }"><i class="fas fa-folder-minus"></i> 未分类</el-dropdown-item>
+                  <el-dropdown-item v-for="album in uniqueAlbums" :key="album" :command="album" :class="{ 'el-dropdown-menu__item--selected': selectedAlbum === album }"><i class="fas fa-folder"></i> {{ album }}</el-dropdown-item>
+                </el-dropdown-menu>
+              </el-dropdown>
+            </el-tooltip>
+
             <el-tooltip content="排序" placement="bottom">
               <el-dropdown @command="sort" :hide-on-click="false">
                 <span class="el-dropdown-link"><i :class="sortIcon"></i></span>
@@ -96,7 +107,6 @@
       <el-main class="main-container">
         <div class="content">
           <template v-for="(item, index) in paginatedTableData" :key="index">
-            <!-- 图片 -->
             <template v-if="fileType === 'image'">
               <el-card class="image-card">
                 <span class="collect-icon" @click.stop="toggleLike(index, item.name)">
@@ -128,7 +138,6 @@
               </div>
               </el-card>
             </template>
-            <!-- 视频 -->
             <template v-else-if="fileType === 'video'">
               <el-card class="video-card" :class="{ 'selected': item.selected }">
                 <div class="video-content">
@@ -146,8 +155,7 @@
                       </template>
                     </el-popover>
                   </div>
-                    <!-- 控制按钮区域 -->
-                  <div class="video-controls">
+                    <div class="video-controls">
                     <button class="control-btn like-btn" @click.stop="toggleLike(index, item.name)"><i :class="item.metadata.liked ? 'fas fa-heart liked' : 'far fa-heart'"></i></button>
                     <button class="control-btn edit-btn" @click.stop="handleEditName(item)"><i class="fas fa-edit"></i></button>
                     <button class="control-btn select-btn" @click.stop="toggleSelect(index, item.name)"><i :class="item.selected ? 'fas fa-square-check selected' : 'far fa-square'"></i></button>
@@ -157,11 +165,9 @@
                 </div>
               </el-card>
             </template>
-            <!-- 音频 -->
             <template v-else-if="fileType === 'audio'">
               <el-card class="audio-card" :class="{ 'selected': item.selected }">
                 <div class="audio-content">
-                  <!-- 音频标题区域 -->
                   <div class="audio-header">
                     <div class="audio-avatar">
                       <img src="./music.svg" alt="Music">
@@ -190,7 +196,6 @@
                     preload="metadata">
                     当前浏览器不支持音频播放
                   </audio>
-                  <!-- 控制按钮区域 -->
                   <div class="audio-controls">
                     <button class="control-btn like-btn" @click.stop="toggleLike(index, item.name)"><i :class="item.metadata.liked ? 'fas fa-heart liked' : 'far fa-heart'"></i></button>
                     <button class="control-btn edit-btn" @click.stop="handleEditName(item)"><i class="fas fa-edit"></i></button>
@@ -201,11 +206,9 @@
                 </div>
               </el-card>
             </template>
-            <!-- 文件 -->
             <template v-else>
               <el-card class="file-card" :class="{ 'selected': item.selected }">
                 <div class="file-content">
-                  <!-- 文件标题区域 -->
                   <div class="file-header">
                     <div class="file-avatar">
                       <i :class="getFileIcon(item.name)" style="font-size: 32px;"></i>
@@ -227,7 +230,6 @@
                       <div class="file-subtitle">{{ getFileType(item.name) }}</div>
                     </div>
                   </div>
-                  <!-- 控制按钮区域 -->
                   <div class="file-controls">
                     <button class="control-btn like-btn" @click.stop="toggleLike(index, item.name)"><i :class="item.metadata.liked ? 'fas fa-heart liked' : 'far fa-heart'"></i></button>
                     <button class="control-btn edit-btn" @click.stop="handleEditName(item)"><i class="fas fa-edit"></i></button>
@@ -259,9 +261,7 @@
     </el-container>
   </div>
 </body>
-<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script> <!-- Vue -->
-<script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js"></script> <!-- ElementUI -->
-<script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script> <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js"></script> <script>
   new Vue({
     el: '#app',
     data: {
@@ -297,12 +297,13 @@
         maxSize: 20 * 1024 * 1024,  // 最大上传20MB
         maxConcurrent: 3
       },
-        tableData: [],
-        nextCursor: null,
+      tableData: [],
+      nextCursor: null,
       search: '',
       currentPage: 1,
       pageSize: 15,
       selectedFiles: [],
+      selectedAlbum: 'All', // 新增：相册选中状态
       sortOption: 'dateDesc',
       filterOption: 'all',
       fileType: 'image',
@@ -316,16 +317,30 @@
       ],
     },
     computed: {
+      // 动态提取当前所有不重复的相册名
+      uniqueAlbums() {
+        const albums = new Set();
+        this.tableData.forEach(item => {
+          if (item.metadata && item.metadata.ListType) {
+            const type = item.metadata.ListType;
+            // 排除系统内置的类别，提纯出真正的相册名
+            if (type !== 'None' && type !== 'Block' && type !== 'White') {
+              albums.add(type);
+            }
+          }
+        });
+        return Array.from(albums);
+      },
       filteredTableData() {
         return this.tableData.filter(data => {
-          // 搜索匹配
+          // 1. 搜索匹配
           const searchLower = this.search.toLowerCase();
           const matchesSearch = !searchLower || [
             (data.metadata.fileName || '').toLowerCase(),
             data.name?.toLowerCase(),
           ].some(field => field?.includes(searchLower));
 
-          // 筛选匹配
+          // 2. 筛选匹配
           const matchesFilter = {
             'all': true,
             'favorites': data.metadata.liked,
@@ -334,14 +349,27 @@
             'adult': data.metadata.Label?.toLowerCase() === 'adult',
           }[this.filterOption] ?? true;
 
-          // 文件类型匹配
+          // 3. 文件类型匹配
           const ext = data.name.split('.').pop().toLowerCase();
           const matchesType = this.fileType === 'document' ?
           !Object.keys(this.fileConfig).some(type =>
-            type !== 'document' && this.fileConfig[type].exts.includes(ext) // 匹配其他所有文件
+            type !== 'document' && this.fileConfig[type].exts.includes(ext) 
           ) :
           this.fileConfig[this.fileType].exts.includes(ext);
-          return matchesSearch && matchesFilter && matchesType;
+
+          // 4. 相册分类匹配
+          let matchesAlbum = true;
+          if (this.selectedAlbum !== 'All') {
+            const itemAlbum = (data.metadata && data.metadata.ListType) ? data.metadata.ListType : 'None';
+            if (this.selectedAlbum === 'None') {
+              // 兼容将黑白名单或未指派视为“未分类”相册
+              matchesAlbum = (itemAlbum === 'None' || itemAlbum === 'Block' || itemAlbum === 'White');
+            } else {
+              matchesAlbum = (itemAlbum === this.selectedAlbum);
+            }
+          }
+
+          return matchesSearch && matchesFilter && matchesType && matchesAlbum;
         });
       },
       paginatedTableData() {
@@ -371,55 +399,68 @@
         deep: true
       },
       sortOption(newOption) { localStorage.setItem('sortOption', newOption); },
-      filterOption(newOption) { localStorage.setItem('filterOption', newOption); }
+      filterOption(newOption) { localStorage.setItem('filterOption', newOption); },
+      selectedAlbum(newOption) { localStorage.setItem('selectedAlbum', newOption); } // 记录相册选择状态
     },
     methods: {
       refreshDashboard() {location.reload();},  // 刷新页面
       handleLogout() { window.location.href = '/'; },  // 退出登录
       handlePageChange(page) { this.currentPage = page; },  // 切换页面
-        handleUpload() { this.$refs.fileInput.click(); },  // 打开文件选择对话框
-        sort(command) { this.sortOption = command; },  // 切换排序方式
-        filter(command) { this.filterOption = command; },  // 切换筛选方式
-        loadMore() {
-          const opts = { method: 'GET', credentials: 'include' };
-          const url = this.nextCursor
-            ? `./api/manage/list?cursor=${encodeURIComponent(this.nextCursor)}`
-            : `./api/manage/list?limit=100`;
+      handleUpload() { this.$refs.fileInput.click(); },  // 打开文件选择对话框
+      sort(command) { this.sortOption = command; },  // 切换排序方式
+      filter(command) { this.filterOption = command; this.currentPage = 1; },  // 切换筛选方式
+      selectAlbum(command) { 
+        this.selectedAlbum = command; 
+        this.currentPage = 1; 
+        this.$message({
+          message: `已切换至 ${command === 'All' ? '全部相册' : (command === 'None' ? '未分类' : command)}`,
+          type: 'success',
+          duration: 1500
+        });
+      }, // 切换相册
+      loadMore() {
+        const opts = { method: 'GET', credentials: 'include' };
+        const url = this.nextCursor
+          ? `./api/manage/list?cursor=${encodeURIComponent(this.nextCursor)}`
+          : `./api/manage/list?limit=100`;
 
-          fetch(url, opts)
-            .then(r => r.json())
-            .then(result => {
-              const files = result.keys || [];
-              const mapped = files.map(file => ({
-                ...file,
-                selected: false,
-                metadata: {
-                  ...file.metadata,
-                  liked: file.metadata.liked ?? false,
-                  fileName: file.metadata.fileName ?? file.name,
-                  fileSize: file.metadata.fileSize ?? 0
-                }
-              }));
-              this.tableData = this.tableData.concat(mapped);
-              this.nextCursor = result.list_complete ? null : result.cursor;
-              this.updateStats();
-            })
-            .catch(() => this.$message.error('同步数据时出错，请检查网络连接'));
-        },
-        sortData(data) {
-          return this.sortOption === 'nameAsc' ? data.sort((a, b) => a.name.localeCompare(b.name)) :
-            this.sortOption === 'sizeDesc' ? data.sort((a, b) => b.metadata.fileSize - a.metadata.fileSize) :
-            data.sort((a, b) => b.metadata.TimeStamp - a.metadata.TimeStamp);
+        fetch(url, opts)
+          .then(r => r.json())
+          .then(result => {
+            const files = result.keys || [];
+            const mapped = files.map(file => ({
+              ...file,
+              selected: false,
+              metadata: {
+                ...file.metadata,
+                liked: file.metadata.liked ?? false,
+                fileName: file.metadata.fileName ?? file.name,
+                fileSize: file.metadata.fileSize ?? 0
+              }
+            }));
+            this.tableData = this.tableData.concat(mapped);
+            this.nextCursor = result.list_complete ? null : result.cursor;
+            this.updateStats();
+          })
+          .catch(() => this.$message.error('同步数据时出错，请检查网络连接'));
+      },
+      sortData(data) {
+        return this.sortOption === 'nameAsc' ? data.sort((a, b) => a.name.localeCompare(b.name)) :
+          this.sortOption === 'sizeDesc' ? data.sort((a, b) => b.metadata.fileSize - a.metadata.fileSize) :
+          data.sort((a, b) => b.metadata.TimeStamp - a.metadata.TimeStamp);
       },
       formattedFileDetails(item) {
         const metadata = item.metadata;
         const timestamp = new Date(metadata.TimeStamp).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+        // 解析相册名以便展示
+        const albumName = (metadata.ListType && !['None', 'Block', 'White'].includes(metadata.ListType)) ? metadata.ListType : '未分类';
         return `
           <div style="text-align: left; padding: 5px;">
             <div><strong>ID：</strong>${item.name}</div>
             <div><strong>文件名：</strong>${metadata.fileName || item.name}</div>
+            <div><strong>相册：</strong><span style="color: #409EFF;">${albumName}</span></div>
             <div><strong>上传时间：</strong>${timestamp}</div>
-            <div><strong>元数据：</strong>${JSON.stringify(metadata)}</div>
+            <div style="max-width:300px; word-wrap:break-word;"><strong>元数据：</strong>${JSON.stringify(metadata)}</div>
           </div>
         `;
       },
@@ -467,8 +508,6 @@
         const files = Array.from(event.target.files || []);
         if (!files.length) return;
         // 文件验证配置
-        // telegram-bot可分发的最大文件大小（20MB）
-        // 大于20MB虽然能够成功上传，但无法获取文件链接
         const config = this.uploadConfig;
         // 过滤有效文件
         const valid = [], invalid = [];
@@ -509,7 +548,7 @@
                 this.tableData.unshift({
                   name: src.replace(/^\/file\//, ''),
                   selected: false,
-                  metadata: { TimeStamp: Date.now(), fileSize: file.size, fileName: file.name }
+                  metadata: { TimeStamp: Date.now(), fileSize: file.size, fileName: file.name, ListType: 'None' }
                 });
                 successCount++;
               }
@@ -534,27 +573,27 @@
         }
         event.target.value = '';
       },
-        refreshFileList() {  // 不刷新页面,仅更新数据
-          fetch("./api/manage/list?limit=100", { method: 'GET', credentials: 'include' })
-            .then(response => response.json())
-            .then(result => {
-              const files = result.keys || [];
-              this.tableData = files.map(file => ({
-                ...file,
-                selected: false,
-                metadata: {
-                  ...file.metadata,
-                  liked: file.metadata.liked ?? false,
-                  fileName: file.metadata.fileName ?? file.name,
-                  fileSize: file.metadata.fileSize ?? 0
-                }
-              }));
-              this.nextCursor = result.list_complete ? null : result.cursor;
-              this.updateStats();
-              this.sortData(this.tableData);
-            })
-            .catch(() => this.$message.error('刷新文件列表失败，请检查网络连接'));
-        },
+      refreshFileList() {  // 不刷新页面,仅更新数据
+        fetch("./api/manage/list?limit=100", { method: 'GET', credentials: 'include' })
+          .then(response => response.json())
+          .then(result => {
+            const files = result.keys || [];
+            this.tableData = files.map(file => ({
+              ...file,
+              selected: false,
+              metadata: {
+                ...file.metadata,
+                liked: file.metadata.liked ?? false,
+                fileName: file.metadata.fileName ?? file.name,
+                fileSize: file.metadata.fileSize ?? 0
+              }
+            }));
+            this.nextCursor = result.list_complete ? null : result.cursor;
+            this.updateStats();
+            this.sortData(this.tableData);
+          })
+          .catch(() => this.$message.error('刷新文件列表失败，请检查网络连接'));
+      },
       toggleSelect(index, name) {
         const fileIndex = this.tableData.findIndex(file => file.name === name);
         this.tableData[fileIndex].selected = !this.tableData[fileIndex].selected;
@@ -893,6 +932,9 @@
             this.sortData(this.tableData);
             this.fileType = localStorage.getItem('fileType') || this.fileType;
             this.switchFileType(this.fileType);
+            
+            // 恢复相册选择状态
+            this.selectedAlbum = localStorage.getItem('selectedAlbum') || this.selectedAlbum;
           })
           .catch(() => this.$message.error('同步数据时出错，请检查网络连接'));
 
