@@ -25,18 +25,17 @@
     }
     ::-webkit-scrollbar-track { background-color: rgba(73, 177, 245, .2); border-radius: 2em; }
 
+    /* === 顶部导航栏 === */
     .header-bar {
       background: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(10px);
       box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
-      padding: 0 20px;
-      line-height: 60px;
+      padding: 15px 20px;
       display: flex;
+      flex-wrap: wrap; /* 允许换行，防止窄屏挤压 */
       justify-content: space-between;
       align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      gap: 15px;
+      /* 已移除吸顶效果 (position: sticky) */
     }
 
     /* === 核心：纯 CSS 响应式瀑布流布局 === */
@@ -91,11 +90,23 @@
     .info-left { display: flex; flex-direction: column; gap: 5px; }
     .info-right { display: flex; gap: 5px; }
 
-    /* === 响应式断点控制列数 === */
-    @media (max-width: 1400px) { .waterfall-container { column-count: 4; } }
-    @media (max-width: 1024px) { .waterfall-container { column-count: 3; } }
-    @media (max-width: 768px) { .waterfall-container { column-count: 2; padding: 10px; } .waterfall-item { margin-bottom: 10px; border-radius: 8px;} }
-    @media (max-width: 480px) { .waterfall-container { column-count: 2; column-gap: 8px; padding: 8px; } .waterfall-item { margin-bottom: 8px; } }
+    /* === 响应式断点 === */
+    @media (max-width: 1400px) { 
+      .waterfall-container { column-count: 4; } 
+    }
+    @media (max-width: 1024px) { 
+      .waterfall-container { column-count: 3; } 
+    }
+    @media (max-width: 768px) { 
+      /* 平板端调整栏目为2列，并优化顶部导航排列 */
+      .waterfall-container { column-count: 2; padding: 15px; } 
+      .header-bar { flex-direction: column; justify-content: center; text-align: center; }
+    }
+    @media (max-width: 480px) { 
+      /* 手机端调整栏目为单列（1列） */
+      .waterfall-container { column-count: 1; padding: 10px; } 
+      .waterfall-item { margin-bottom: 15px; border-radius: 8px;} 
+    }
 
   </style>
   <script src="https://js.sentry-cdn.com/219f636ac7bde5edab2c3e16885cb535.min.js" crossorigin="anonymous"></script>
@@ -107,21 +118,15 @@
     <div class="header-bar">
       <div style="font-size: 24px; font-weight: bold; color: #333;">Waterfall Gallery</div>
       
-      <div style="display: flex; align-items: center; gap: 15px;">
-        <el-select v-model="selectedAlbum" size="small" style="width: 140px;" placeholder="选择相册">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+        <el-select v-model="selectedAlbum" size="small" style="width: 160px;" placeholder="选择相册">
           <el-option label="所有相册" value="All"></el-option>
           <el-option label="未分类" value="None"></el-option>
           <el-option v-for="album in uniqueAlbums" :key="album" :label="album" :value="album"></el-option>
         </el-select>
-
-        <el-radio-group v-model="filterType" size="small">
-          <el-radio-button label="all">全部</el-radio-button>
-          <el-radio-button label="original">原图</el-radio-button>
-          <el-radio-button label="preview">压缩图</el-radio-button>
-        </el-radio-group>
       </div>
 
-      <div>
+      <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
         <a href="./admin.html"><el-button size="mini" type="success">列表视图</el-button></a>
         <a href="./admin-imgtc.html"><el-button size="mini" type="warning">网格视图</el-button></a>
         <el-button v-if="showLogoutButton" size="mini" type="info" @click="handleLogout()">退出</el-button>
@@ -169,7 +174,6 @@
   new Vue({
     el: '#app',
     data: {
-      filterType: 'all',
       selectedAlbum: 'All', 
       showLogoutButton: false,
       tableData: [],
@@ -186,28 +190,14 @@
         });
         return Array.from(albums);
       },
-      // 图片分类过滤逻辑 (兼容原图/预览图和相册筛选)
+      // 图片分类过滤逻辑 (仅保留相册筛选)
       filteredTableData() {
         return this.tableData.filter(data => {
-          let matchType = true;
-          const metaStr = data.metadata ? JSON.stringify(data.metadata) : '';
-          const isOriginal = metaStr.includes('[原图]');
-          const isPreview = metaStr.includes('[预览图]');
-          const isLegacy = !isOriginal && !isPreview; 
-
-          if (this.filterType === 'original') {
-            matchType = isOriginal || isLegacy;
-          } else if (this.filterType === 'preview') {
-            matchType = isPreview;
-          }
-
-          let matchAlbum = true;
           if (this.selectedAlbum !== 'All') {
             const itemAlbum = (data.metadata && data.metadata.ListType) ? data.metadata.ListType : 'None';
-            matchAlbum = (itemAlbum === this.selectedAlbum);
+            return itemAlbum === this.selectedAlbum;
           }
-
-          return matchType && matchAlbum;
+          return true; // 如果选了“All”，则返回所有
         });
       }
     },
