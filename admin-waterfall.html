@@ -1,788 +1,665 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>画廊 · Gallery</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css" crossorigin="anonymous">
-  <style>
-    /* ── Design Tokens ── */
-    :root {
-      --bg:         #0a0a0c;
-      --surface:    #111116;
-      --card:       #16161d;
-      --border:     rgba(255,255,255,0.07);
-      --gold:       #c9a84c;
-      --gold-dim:   #8a6f30;
-      --gold-glow:  rgba(201,168,76,0.15);
-      --text:       #e8e4dc;
-      --muted:      #6b6878;
-      --danger:     #c0392b;
-      --success:    #27ae60;
-      --radius:     12px;
-      --font-serif: 'Playfair Display', serif;
-      --font-sans:  'DM Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>瀑布画廊 · Waterfall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css" crossorigin="anonymous">
+<style>
+/* ══ TOKENS ══════════════════════════════════════════════════════════════════ */
+:root{
+  --ease-spring: cubic-bezier(.34,1.56,.64,1);
+  --ease-out:    cubic-bezier(.4,0,.2,1);
+}
+[data-theme="light"]{
+  --bg:       #f7f3ec; --bg2: #ede8df; --bg3: #e5dfd5;
+  --surface:  #ffffff; --panel: #f2ede4; --card: #ffffff;
+  --bdr:      rgba(120,95,55,.12); --bdr-h: rgba(120,95,55,.26);
+  --gold:     #8c5e18; --gold-d: #b07830; --gold-x: #c99040;
+  --gold-g:   rgba(140,94,24,.07); --gold-gl: rgba(140,94,24,.14);
+  --text:     #1e1a14; --text2: #5c4a30; --muted: #8a7a68;
+  --hbg:      rgba(247,243,236,.92);
+  --shsm:     0 1px 3px rgba(80,60,20,.07),0 4px 16px rgba(80,60,20,.05);
+  --shlift:   0 8px 32px rgba(80,60,20,.18),0 2px 6px rgba(80,60,20,.07);
+  --danger:   #b83030; --success: #2e7d50;
+  --sd-width: 260px;
+}
+[data-theme="dark"]{
+  --bg:       #0a0a0d; --bg2: #0f0f14; --bg3: #141418;
+  --surface:  #131318; --panel: #0d0d11; --card: #18181f;
+  --bdr:      rgba(255,255,255,.062); --bdr-h: rgba(255,255,255,.13);
+  --gold:     #c9a84c; --gold-d: #8a6f30; --gold-x: #e4b85a;
+  --gold-g:   rgba(201,168,76,.09); --gold-gl: rgba(201,168,76,.17);
+  --text:     #e8e4da; --text2: #a09080; --muted: #6a6270;
+  --hbg:      rgba(10,10,13,.9);
+  --shsm:     0 1px 4px rgba(0,0,0,.4),0 6px 22px rgba(0,0,0,.25);
+  --shlift:   0 8px 40px rgba(0,0,0,.7),0 0 0 1px var(--gold-d);
+  --danger:   #c03030; --success: #37a066;
+  --sd-width: 260px;
+}
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;scroll-behavior:smooth}
+body{min-height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans','PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;overflow-x:hidden;transition:background .3s,color .3s}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bdr-h);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--gold-d)}
 
-    html { scroll-behavior: smooth; }
+/* ── Progress bar ─────────────────────────────────────────────────────────── */
+.pbar{position:fixed;top:0;left:0;height:2px;z-index:9999;width:0;opacity:0;border-radius:0 2px 2px 0;
+  background:linear-gradient(90deg,var(--gold-d),var(--gold-x),var(--gold-d));background-size:200%;
+  transition:opacity .2s}
+.pbar.on{opacity:1;animation:pbsw 1.7s ease-in-out infinite}
+@keyframes pbsw{0%{width:0;background-position:0%}55%{width:72%;background-position:100%}100%{width:96%;background-position:0%}}
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-sans);
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
+#app{display:flex;flex-direction:column;min-height:100vh}
 
-    /* ── Noise texture overlay ── */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-      pointer-events: none;
-      z-index: 0;
-      opacity: 0.4;
-    }
+/* ══ HEADER ══════════════════════════════════════════════════════════════════ */
+.hd{
+  position:sticky;top:0;z-index:200;height:56px;flex-shrink:0;
+  background:var(--hbg);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;gap:10px;padding:0 18px;
+  transition:background .3s,border-color .3s;
+}
 
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: var(--surface); }
-    ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 99px; }
+.logo{
+  font-family:'Playfair Display',Georgia,serif;font-size:17px;font-style:italic;
+  color:var(--gold);letter-spacing:.02em;white-space:nowrap;user-select:none;flex-shrink:0;
+}
 
-    /* ══════════════════════════════
-       HEADER
-    ══════════════════════════════ */
-    .header-bar {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(10,10,12,0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
-      padding: 0 28px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      height: 64px;
-    }
+/* Hamburger toggle */
+.hbg-btn{
+  width:34px;height:34px;border-radius:8px;border:1px solid var(--bdr);
+  background:transparent;color:var(--muted);cursor:pointer;flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  transition:all .2s;
+}
+.hbg-btn:hover{border-color:var(--gold-d);color:var(--gold);background:var(--gold-g)}
+.hbg-btn .hb{display:block;height:1.5px;background:currentColor;border-radius:99px;transition:all .25s;transform-origin:center}
+.hbg-btn .hb:nth-child(1){width:14px}.hbg-btn .hb:nth-child(2){width:10px}.hbg-btn .hb:nth-child(3){width:14px}
+.sdopen .hbg-btn .hb:nth-child(1){transform:translateY(5.5px) rotate(45deg);width:14px}
+.sdopen .hbg-btn .hb:nth-child(2){opacity:0;transform:scaleX(0)}
+.sdopen .hbg-btn .hb:nth-child(3){transform:translateY(-5.5px) rotate(-45deg);width:14px}
 
-    .logo {
-      font-family: var(--font-serif);
-      font-size: 20px;
-      color: var(--gold);
-      letter-spacing: 0.04em;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .logo span { color: var(--muted); font-size: 13px; font-family: var(--font-sans); font-weight: 300; margin-left: 8px; letter-spacing: 0.1em; text-transform: uppercase; }
+.hdiv{width:1px;height:20px;background:var(--bdr);flex-shrink:0}
 
-    /* ── Album selector trigger ── */
-    .album-trigger {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px 14px;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      min-width: 220px;
-      position: relative;
-      user-select: none;
-    }
-    .album-trigger:hover { border-color: var(--gold-dim); background: var(--card); }
-    .album-trigger.active { border-color: var(--gold); }
+/* Breadcrumb */
+.bc{display:flex;align-items:center;gap:2px;flex:1;min-width:0;overflow:hidden}
+.bcs{font-size:12.5px;color:var(--muted);white-space:nowrap;padding:3px 7px;border-radius:5px;
+  cursor:pointer;transition:all .15s;flex-shrink:0}
+.bcs:hover{color:var(--gold);background:var(--gold-g)}
+.bcs.lf{color:var(--text);font-weight:500;cursor:default;flex-shrink:1;overflow:hidden;text-overflow:ellipsis}
+.bcs.lf:hover{background:transparent;color:var(--text)}
+.bca{color:var(--bdr-h);font-size:11px;flex-shrink:0}
 
-    .album-trigger-label {
-      flex: 1;
-      font-size: 13px;
-      color: var(--text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .album-trigger-label.placeholder { color: var(--muted); }
-    .album-trigger-icon {
-      color: var(--muted);
-      font-size: 11px;
-      transition: transform 0.2s;
-    }
-    .album-trigger.active .album-trigger-icon { transform: rotate(180deg); color: var(--gold); }
+.hcnt{font-size:11px;color:var(--gold);background:var(--gold-g);border:1px solid var(--gold-gl);
+  padding:2px 10px;border-radius:99px;white-space:nowrap;flex-shrink:0;letter-spacing:.02em}
 
-    /* ── Album dropdown panel ── */
-    .album-panel {
-      position: absolute;
-      top: calc(100% + 8px);
-      left: 0;
-      width: 320px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
-      z-index: 200;
-      overflow: hidden;
-      animation: panelIn 0.18s ease;
-    }
-    @keyframes panelIn {
-      from { opacity: 0; transform: translateY(-6px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+/* Quality pills */
+.pills{display:flex;gap:3px;flex-shrink:0}
+.pill{padding:5px 12px;border-radius:99px;font-size:12px;font-weight:500;cursor:pointer;
+  border:1px solid var(--bdr);background:transparent;color:var(--muted);
+  transition:all .18s;white-space:nowrap;font-family:inherit}
+.pill:hover{border-color:var(--gold-d);color:var(--text)}
+.pill.on{background:var(--gold);border-color:var(--gold);color:#fff;font-weight:600}
 
-    /* ── Breadcrumb ── */
-    .album-breadcrumb {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 12px 14px 8px;
-      border-bottom: 1px solid var(--border);
-      flex-wrap: wrap;
-    }
-    .crumb-item {
-      font-size: 11px;
-      color: var(--muted);
-      cursor: pointer;
-      padding: 2px 4px;
-      border-radius: 4px;
-      transition: color 0.15s;
-    }
-    .crumb-item:hover { color: var(--gold); }
-    .crumb-item.current { color: var(--text); cursor: default; }
-    .crumb-sep { color: var(--border); font-size: 10px; }
+/* Column picker */
+.cpk{display:flex;gap:2px;flex-shrink:0}
+.cpbtn{width:26px;height:26px;border-radius:6px;border:1px solid var(--bdr);background:transparent;
+  color:var(--muted);cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;transition:all .15s}
+.cpbtn:hover{border-color:var(--gold-d);color:var(--text)}
+.cpbtn.on{background:var(--gold-g);border-color:var(--gold);color:var(--gold)}
 
-    /* ── Album tree list ── */
-    .album-list {
-      max-height: 320px;
-      overflow-y: auto;
-      padding: 6px 0;
-    }
+/* Theme toggle */
+.theme-btn{
+  width:34px;height:34px;border-radius:8px;border:1px solid var(--bdr);background:transparent;
+  color:var(--muted);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:15px;transition:all .2s;overflow:hidden;position:relative;
+}
+.theme-btn:hover{border-color:var(--gold-d);color:var(--gold);background:var(--gold-g)}
+.theme-icon{transition:transform .35s var(--ease-spring),opacity .25s;position:absolute}
+.theme-icon.sun{transform:rotate(0deg) scale(1)}
+.theme-icon.moon{transform:rotate(-90deg) scale(0);opacity:0}
+[data-theme="light"] .theme-icon.sun{transform:rotate(90deg) scale(0);opacity:0}
+[data-theme="light"] .theme-icon.moon{transform:rotate(0deg) scale(1);opacity:1}
 
-    .album-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 14px;
-      cursor: pointer;
-      transition: background 0.15s;
-      font-size: 13px;
-      color: var(--text);
-    }
-    .album-row:hover { background: var(--card); }
-    .album-row.selected { background: var(--gold-glow); color: var(--gold); }
+/* Search */
+.hs-wrap{position:relative;flex-shrink:0}
+.hs-wrap input{
+  width:190px;height:30px;padding:0 10px 0 30px;
+  border:1px solid var(--bdr);border-radius:99px;
+  background:var(--bg2);color:var(--text);font-family:inherit;font-size:12px;
+  outline:none;transition:all .22s;
+}
+.hs-wrap input::placeholder{color:var(--muted)}
+.hs-wrap input:focus{border-color:var(--gold-d);background:var(--surface);width:220px}
+.hs-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:11px;pointer-events:none}
 
-    .album-row-icon { font-size: 14px; flex-shrink: 0; }
-    .album-row-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .album-row-count { font-size: 11px; color: var(--muted); flex-shrink: 0; }
-    .album-row-arrow { font-size: 10px; color: var(--muted); flex-shrink: 0; }
+/* Nav links */
+.nav{display:flex;gap:3px;flex-shrink:0}
+.nav a,.nav button{
+  padding:5px 11px;border-radius:6px;font-size:12px;text-decoration:none;
+  color:var(--muted);border:1px solid var(--bdr);background:transparent;cursor:pointer;
+  white-space:nowrap;font-family:inherit;transition:all .18s;letter-spacing:.02em;
+}
+.nav a:hover,.nav button:hover{color:var(--text);border-color:var(--gold-d)}
+.nav a.cur{color:var(--gold);border-color:var(--gold-d);background:var(--gold-g);font-weight:500}
 
-    .album-divider { height: 1px; background: var(--border); margin: 4px 0; }
+/* ══ BODY LAYOUT ════════════════════════════════════════════════════════════ */
+.body{display:flex;flex:1;min-height:calc(100vh - 56px)}
 
-    /* ── Filter pills ── */
-    .filter-pills {
-      display: flex;
-      gap: 6px;
-    }
-    .pill {
-      padding: 6px 14px;
-      border-radius: 99px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--muted);
-      transition: all 0.2s;
-      letter-spacing: 0.02em;
-    }
-    .pill:hover { border-color: var(--gold-dim); color: var(--text); }
-    .pill.active { background: var(--gold); border-color: var(--gold); color: #0a0a0c; font-weight: 700; }
+/* ══ SIDEBAR ════════════════════════════════════════════════════════════════ */
+.sd{
+  width:var(--sd-width);flex-shrink:0;
+  background:var(--panel);border-right:1px solid var(--bdr);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width .28s var(--ease-out),opacity .22s ease,border-color .3s;
+}
+.sd.closed{width:0;border-right-color:transparent;opacity:0;pointer-events:none}
+.sdi{width:var(--sd-width);display:flex;flex-direction:column;height:100%;overflow:hidden}
 
-    /* ── Nav links ── */
-    .nav-links { display: flex; gap: 6px; margin-left: auto; }
-    .nav-link {
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      text-decoration: none;
-      color: var(--muted);
-      border: 1px solid var(--border);
-      background: transparent;
-      transition: all 0.2s;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .nav-link:hover { color: var(--text); border-color: var(--gold-dim); }
-    .nav-link.current { color: var(--gold); border-color: var(--gold-dim); }
+/* Sidebar header */
+.sdh{
+  padding:12px 14px 8px;border-bottom:1px solid var(--bdr);flex-shrink:0;
+}
+.sdh-row1{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.sdlbl{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sdmeta{font-size:11px;color:var(--muted)}
 
-    /* ══════════════════════════════
-       EMPTY STATE
-    ══════════════════════════════ */
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: calc(100vh - 64px);
-      padding: 60px 20px;
-      text-align: center;
-      animation: fadeIn 0.5s ease;
-    }
-    .empty-icon {
-      width: 80px;
-      height: 80px;
-      border: 1px solid var(--border);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      color: var(--muted);
-      margin-bottom: 24px;
-      background: var(--surface);
-    }
-    .empty-state h2 {
-      font-family: var(--font-serif);
-      font-size: 26px;
-      color: var(--text);
-      font-weight: 400;
-      margin-bottom: 10px;
-    }
-    .empty-state p { color: var(--muted); font-size: 14px; line-height: 1.7; }
+/* Album search inside sidebar */
+.sd-search{position:relative;display:flex;align-items:center}
+.sd-search input{
+  width:100%;height:28px;padding:0 8px 0 28px;
+  border:1px solid var(--bdr);border-radius:6px;
+  background:var(--bg2);color:var(--text);font-family:inherit;font-size:12px;
+  outline:none;transition:border-color .18s,background .18s;
+}
+.sd-search input::placeholder{color:var(--muted)}
+.sd-search input:focus{border-color:var(--gold-d);background:var(--surface)}
+.sd-search-ico{position:absolute;left:9px;color:var(--muted);font-size:11px;pointer-events:none}
 
-    /* ══════════════════════════════
-       WATERFALL GRID
-    ══════════════════════════════ */
-    .waterfall-container {
-      column-count: 5;
-      column-gap: 12px;
-      padding: 20px 20px;
-      width: 100%;
-    }
+/* Sidebar scroll */
+.sdscr{flex:1;overflow-y:auto;padding:6px 0 24px}
 
-    .waterfall-item {
-      break-inside: avoid;
-      margin-bottom: 12px;
-      position: relative;
-      border-radius: var(--radius);
-      overflow: hidden;
-      cursor: pointer;
-      background: var(--card);
-      border: 1px solid var(--border);
-      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease, border-color 0.3s ease;
-      animation: itemReveal 0.4s ease both;
-    }
+/* Tree rows */
+.trow{
+  display:flex;align-items:center;height:32px;gap:5px;padding:0 10px;
+  border-radius:7px;margin:1px 6px;cursor:pointer;
+  transition:background .13s;position:relative;
+}
+.trow:hover{background:var(--gold-g)}
+.trow.act{background:var(--gold-g)}
+.trow.act .tn{color:var(--gold);font-weight:500}
+.trow.act::before{
+  content:'';position:absolute;left:-6px;top:6px;bottom:6px;
+  width:3px;background:var(--gold);border-radius:0 3px 3px 0;
+}
+.trow.anc::before{
+  content:'';position:absolute;left:-6px;top:6px;bottom:6px;
+  width:3px;background:var(--gold-d);opacity:.4;border-radius:0 3px 3px 0;
+}
+.tchv{
+  width:14px;height:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--muted);transition:transform .18s var(--ease-out),color .15s;
+}
+.tchv.open{transform:rotate(90deg);color:var(--gold)}
+.tchv.blank{opacity:0;pointer-events:none}
+.tico{font-size:13px;flex-shrink:0;transition:color .15s}
+.tico.fold{color:var(--gold-d)}.tico.leaf{color:var(--muted)}
+.trow.act .tico,.trow.anc .tico{color:var(--gold)}
+.tn{flex:1;font-size:12.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s}
+.tc{font-size:10px;color:var(--muted);background:var(--bdr);padding:1px 7px;border-radius:99px;flex-shrink:0}
+.trow.act .tc{background:var(--gold-gl);color:var(--gold)}
 
-    @keyframes itemReveal {
-      from { opacity: 0; transform: translateY(12px) scale(0.97); }
-      to   { opacity: 1; transform: translateY(0) scale(1); }
-    }
+.tdiv{height:1px;background:var(--bdr);margin:6px 12px}
+.tsec{padding:10px 16px 4px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 
-    .waterfall-item:hover {
-      transform: translateY(-4px) scale(1.01);
-      box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 0 0 1px var(--gold-dim);
-      border-color: var(--gold-dim);
-      z-index: 5;
-    }
+/* No-match in sidebar search */
+.sd-nomatch{padding:20px 16px;text-align:center;font-size:12px;color:var(--muted);line-height:1.6}
 
-    .waterfall-item .el-image,
-    .waterfall-item video {
-      width: 100%;
-      display: block;
-    }
+/* Mobile */
+.mobmask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:49;backdrop-filter:blur(3px)}
+@media(max-width:1000px){
+  .sd{position:fixed;top:56px;left:0;bottom:0;z-index:50;width:var(--sd-width) !important;opacity:1 !important;
+    border-right-color:var(--bdr) !important;transform:translateX(-100%);pointer-events:none;
+    transition:transform .28s var(--ease-out)}
+  .sd.mobopen{transform:translateX(0);pointer-events:auto}
+  .mobmask.show{display:block}
+  .nav{display:none}.cpk{display:none}
+}
+@media(max-width:640px){.hd{padding:0 12px;gap:7px}.hcnt{display:none}.hs-wrap{display:none}}
+@media(max-width:480px){.pills{display:none}}
 
-    /* ── Hover overlay ── */
-    .item-overlay {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 55%);
-      opacity: 0;
-      transition: opacity 0.25s ease;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      padding: 14px 12px 12px;
-    }
-    .waterfall-item:hover .item-overlay { opacity: 1; }
+/* ══ MAIN ═══════════════════════════════════════════════════════════════════ */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
 
-    .overlay-album {
-      font-size: 10px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 4px;
-      font-weight: 500;
-    }
-    .overlay-name {
-      font-size: 11px;
-      color: rgba(255,255,255,0.7);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 10px;
-    }
-    .overlay-actions { display: flex; gap: 6px; }
-    .overlay-btn {
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      transition: transform 0.15s, background 0.15s;
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(4px);
-      color: #fff;
-    }
-    .overlay-btn:hover { transform: scale(1.15); background: rgba(255,255,255,0.25); }
-    .overlay-btn.danger:hover { background: var(--danger); }
-    .overlay-btn.copy:hover { background: var(--gold); color: #0a0a0c; }
+/* Empty states */
+.empty{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:80px 24px;text-align:center;animation:fadeup .5s ease;
+}
+.e-ring{
+  width:88px;height:88px;border-radius:50%;border:1px solid var(--bdr);background:var(--surface);
+  display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--muted);
+  margin-bottom:22px;position:relative;
+}
+.e-ring::after{
+  content:'';position:absolute;inset:-6px;border-radius:50%;
+  border:1px dashed var(--gold-d);opacity:.3;animation:spin-slow 12s linear infinite;
+}
+.empty h2{font-family:'Playfair Display',serif;font-weight:400;font-size:22px;color:var(--text);margin-bottom:10px}
+.empty p{color:var(--muted);font-size:13px;line-height:1.8;max-width:320px}
+.etip{
+  margin-top:24px;padding:10px 18px;border-radius:9px;border:1px solid var(--bdr);background:var(--surface);
+  font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:8px;
+}
 
-    /* ── Load more ── */
-    .load-area {
-      text-align: center;
-      padding: 32px 0 56px;
-    }
-    .load-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 32px;
-      background: transparent;
-      border: 1px solid var(--gold-dim);
-      border-radius: 99px;
-      color: var(--gold);
-      font-size: 13px;
-      font-family: var(--font-sans);
-      cursor: pointer;
-      transition: all 0.25s;
-      letter-spacing: 0.04em;
-    }
-    .load-btn:hover { background: var(--gold-glow); border-color: var(--gold); }
-    .load-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .load-end { color: var(--muted); font-size: 13px; letter-spacing: 0.04em; }
-    .load-end::before { content: '— '; }
-    .load-end::after { content: ' —'; }
+/* ══ WATERFALL ════════════════════════════════════════════════════════════ */
+.wf-wrap{flex:1;overflow-y:auto;padding:18px 18px 0}
+.wf{width:100%;column-gap:14px;animation:fadeup .3s ease}
+.wf[data-cols="2"]{column-count:2}.wf[data-cols="3"]{column-count:3}
+.wf[data-cols="4"]{column-count:4}.wf[data-cols="5"]{column-count:5}
 
-    /* ── Spinner ── */
-    .spinner {
-      width: 14px; height: 14px;
-      border: 2px solid var(--gold-dim);
-      border-top-color: var(--gold);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      display: inline-block;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+/* Card */
+.wfc{
+  break-inside:avoid;margin-bottom:14px;position:relative;
+  border-radius:12px;overflow:hidden;cursor:pointer;
+  background:var(--card);border:1px solid var(--bdr);box-shadow:var(--shsm);
+  transition:transform .32s var(--ease-spring),box-shadow .3s ease,border-color .25s;
+  animation:cardin .45s ease both;
+}
+.wfc:hover{transform:translateY(-6px) scale(1.013);box-shadow:var(--shlift);border-color:var(--gold-d);z-index:5}
+@keyframes cardin{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+.wfc .el-image,.wfc video{width:100%;display:block;vertical-align:middle}
+.el-image__inner{display:block !important;vertical-align:middle !important}
+.el-image__error{min-height:80px;background:var(--bg2) !important;color:var(--muted) !important}
 
-    /* ══════════════════════════════
-       RESPONSIVE
-    ══════════════════════════════ */
-    @media (max-width: 1400px) { .waterfall-container { column-count: 4; } }
-    @media (max-width: 1100px) { .waterfall-container { column-count: 3; } }
-    @media (max-width: 768px) {
-      .waterfall-container { column-count: 2; padding: 12px; column-gap: 8px; }
-      .waterfall-item { margin-bottom: 8px; }
-      .header-bar { padding: 0 16px; gap: 10px; height: auto; min-height: 64px; flex-wrap: wrap; padding-top: 12px; padding-bottom: 12px; }
-      .logo span { display: none; }
-      .nav-links { display: none; }
-    }
-    @media (max-width: 480px) { .waterfall-container { column-count: 1; } }
+/* Card overlay */
+.cov{
+  position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(0,0,0,.86) 0%,rgba(0,0,0,.2) 48%,transparent 70%);
+  opacity:0;transition:opacity .26s ease;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:14px 13px 12px;
+}
+.wfc:hover .cov{opacity:1}
+[data-theme="light"] .cov{background:linear-gradient(to top,rgba(10,6,0,.82) 0%,rgba(10,6,0,.15) 50%,transparent 72%)}
+.ova{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-x);margin-bottom:4px;font-weight:600}
+.ovn{font-size:11px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px}
+.ovbs{display:flex;gap:6px}
+.ovb{
+  width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+  background:rgba(255,255,255,.14);backdrop-filter:blur(8px);color:#fff;
+  transition:transform .17s var(--ease-spring),background .17s;
+}
+.ovb:hover{transform:scale(1.2)}
+.ovb.c:hover{background:var(--gold);color:#05030a}
+.ovb.d:hover{background:var(--danger)}
 
-    /* ── Element UI overrides ── */
-    .el-image__inner { display: block !important; vertical-align: middle !important; }
-    .el-image__error { background: var(--card); color: var(--muted); min-height: 80px; }
-  </style>
+/* Footer zone */
+.lz{text-align:center;padding:32px 0 60px}
+.lbtn{
+  display:inline-flex;align-items:center;gap:9px;padding:11px 30px;
+  border:1px solid var(--gold-d);border-radius:99px;
+  background:transparent;color:var(--gold);font-size:13px;
+  font-family:inherit;cursor:pointer;transition:all .22s;letter-spacing:.04em;
+}
+.lbtn:hover{background:var(--gold-g);border-color:var(--gold)}
+.lbtn:disabled{opacity:.4;cursor:not-allowed}
+.lend{color:var(--muted);font-size:12.5px;letter-spacing:.08em}
+.lend::before{content:'— '}.lend::after{content:' —'}
+
+/* Spinner */
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--gold-d);border-top-color:var(--gold);border-radius:50%;animation:rot .65s linear infinite}
+
+/* Keyframes */
+@keyframes rot{to{transform:rotate(360deg)}}
+@keyframes fadeup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes spin-slow{to{transform:rotate(360deg)}}
+
+/* Responsive waterfall */
+@media(max-width:640px){.wf[data-cols="4"],.wf[data-cols="5"]{column-count:3}}
+@media(max-width:480px){.wf{column-count:2 !important;padding:10px;column-gap:8px}.wfc{margin-bottom:8px;border-radius:8px}}
+</style>
 </head>
 <body>
-<div id="app" @click.self="closePanels">
+<div id="app" :class="{sdopen:sdOpen&&!isMob}">
+  <div class="pbar" :class="{on:loading}"></div>
 
-  <!-- ══ HEADER ══ -->
-  <div class="header-bar">
-    <div class="logo">Gallery<span>Admin</span></div>
+  <header class="hd">
+    <div class="logo">Gallery</div>
 
-    <!-- Album tree selector -->
-    <div style="position: relative;" ref="albumSelectorWrap">
-      <div class="album-trigger" :class="{ active: albumPanelOpen }" @click.stop="toggleAlbumPanel">
-        <span style="font-size:14px; color: var(--muted);">▤</span>
-        <span class="album-trigger-label" :class="{ placeholder: !selectedAlbumLabel }">
-          {{ selectedAlbumLabel || '选择相册 / 目录' }}
-        </span>
-        <span class="album-trigger-icon">▾</span>
-      </div>
+    <button class="hbg-btn" @click.stop="sdOpen=!sdOpen" :title="sdOpen?'收起目录':'展开目录'">
+      <span class="hb"></span><span class="hb"></span><span class="hb"></span>
+    </button>
+    <div class="hdiv"></div>
 
-      <!-- Cascading Panel -->
-      <div class="album-panel" v-if="albumPanelOpen" @click.stop>
+    <!-- Breadcrumb -->
+    <div class="bc">
+      <span class="bcs" @click="pick('All')">Gallery</span>
+      <template v-if="sel&&sel!=='All'">
+        <span class="bca">›</span>
+        <template v-for="(s,i) in selSegs">
+          <span class="bcs" :class="{lf:i===selSegs.length-1}"
+                @click="i<selSegs.length-1&&pick(selSegs.slice(0,i+1).join('/'))">{{s}}</span>
+          <span class="bca" v-if="i<selSegs.length-1">›</span>
+        </template>
+      </template>
+      <span class="bcs lf" v-else-if="sel==='All'">全览</span>
+      <span class="bcs lf" v-else-if="sel==='None'">未分类</span>
+    </div>
 
-        <!-- Breadcrumb -->
-        <div class="album-breadcrumb">
-          <span class="crumb-item" @click="navigateTo(null)">根目录</span>
-          <template v-for="(crumb, ci) in panelPath">
-            <span class="crumb-sep">›</span>
-            <span class="crumb-item" :class="{ current: ci === panelPath.length-1 }"
-                  @click="navigateTo(ci)">{{ crumb }}</span>
+    <span class="hcnt" v-if="sel">{{ filtered.length }} 项</span>
+    <div class="hdiv"></div>
+
+    <!-- Inline search -->
+    <div class="hs-wrap">
+      <span class="hs-ico">⌕</span>
+      <input v-model="q" placeholder="搜索文件名…" @input="afc=0">
+    </div>
+
+    <!-- Quality pills -->
+    <div class="pills">
+      <button class="pill" :class="{on:ft==='all'}"      @click="ft='all'">全部</button>
+      <button class="pill" :class="{on:ft==='original'}" @click="ft='original'">原图</button>
+      <button class="pill" :class="{on:ft==='preview'}"  @click="ft='preview'">预览</button>
+    </div>
+
+    <!-- Column picker -->
+    <div class="cpk">
+      <button class="cpbtn" v-for="n in [2,3,4,5]" :key="n" :class="{on:cols===n}" @click="setCols(n)">{{n}}</button>
+    </div>
+
+    <!-- Theme toggle -->
+    <button class="theme-btn" @click="toggleTheme" :title="dark?'切换日间模式':'切换夜间模式'">
+      <span class="theme-icon sun">☀</span>
+      <span class="theme-icon moon">☽</span>
+    </button>
+
+    <!-- Nav -->
+    <div class="nav">
+      <a href="./admin.html">列表</a>
+      <a href="./admin-imgtc.html">管理</a>
+      <a href="./admin-waterfall.html" class="cur">瀑布</a>
+      <a href="./admin-immersive.html">沉浸</a>
+      <button v-if="showOut" @click="location.href='./api/manage/logout'">退出</button>
+    </div>
+  </header>
+
+  <div class="body">
+    <div class="mobmask" :class="{show:sdOpen&&isMob}" @click="sdOpen=false"></div>
+
+    <!-- ══ SIDEBAR ══ -->
+    <aside class="sd" :class="{closed:!sdOpen&&!isMob, mobopen:sdOpen&&isMob}">
+      <div class="sdi">
+        <div class="sdh">
+          <div class="sdh-row1">
+            <span class="sdlbl">相册目录</span>
+            <span class="sdmeta">{{ data.length }} 条</span>
+          </div>
+          <!-- Album search -->
+          <div class="sd-search">
+            <span class="sd-search-ico">⌕</span>
+            <input v-model="sdQ" placeholder="搜索相册…">
+          </div>
+        </div>
+        <div class="sdscr">
+          <!-- Fixed entries (only shown if search is empty) -->
+          <template v-if="!sdQ.trim()">
+            <div class="trow" :class="{act:sel==='All'}" @click="pick('All')">
+              <span class="tchv blank">›</span>
+              <span class="tico leaf">✦</span>
+              <span class="tn">全部文件</span>
+              <span class="tc">{{data.length}}</span>
+            </div>
+            <div class="trow" :class="{act:sel==='None'}" @click="pick('None')">
+              <span class="tchv blank">›</span>
+              <span class="tico leaf">○</span>
+              <span class="tn">未分类</span>
+              <span class="tc" v-if="uncnt">{{uncnt}}</span>
+            </div>
+            <div class="tdiv"></div>
+            <div class="tsec">自定义相册</div>
+          </template>
+
+          <!-- Search results flat list -->
+          <template v-if="sdQ.trim()">
+            <div v-if="!sdResults.length" class="sd-nomatch">
+              未找到匹配的相册<br>
+              <span style="font-size:11px">「{{sdQ}}」</span>
+            </div>
+            <div class="trow" v-for="k in sdResults" :key="k"
+                 :class="{act:sel===k}" @click="pick(k)">
+              <span class="tchv blank">›</span>
+              <span class="tico leaf">◈</span>
+              <span class="tn" :title="k">{{k}}</span>
+              <span class="tc">{{cnts[k]||0}}</span>
+            </div>
+          </template>
+
+          <!-- Tree (only shown if search empty) -->
+          <template v-else>
+            <tree-node v-for="(node,key) in forest" :key="key"
+                       :nk="key" :node="node" :depth="0" :sel="sel"
+                       @pick="pick($event)"></tree-node>
+            <div v-if="!Object.keys(forest).length&&!loading"
+                 style="padding:14px 16px;font-size:12px;color:var(--muted)">
+              {{ loading?'加载中…':'暂无自定义相册' }}
+            </div>
           </template>
         </div>
+      </div>
+    </aside>
 
-        <div class="album-list">
+    <!-- ══ MAIN CONTENT ══ -->
+    <main class="main">
+      <!-- No selection -->
+      <div class="empty" v-if="!sel">
+        <div class="e-ring">◈</div>
+        <h2>从目录中选择一个相册</h2>
+        <p>点击左侧相册树导航<br>父目录会自动包含全部子级内容</p>
+        <div class="etip">💡 点击标题栏 ≡ 可展开 / 收起目录</div>
+      </div>
 
-          <!-- "All" shortcut at root -->
-          <div class="album-row" v-if="panelPath.length === 0"
-               :class="{ selected: selectedAlbum === 'All' }"
-               @click="selectAlbum('All', '全览 · All')">
-            <span class="album-row-icon">✦</span>
-            <span class="album-row-name">所有相册（全览）</span>
-          </div>
+      <!-- Empty results -->
+      <div class="empty" v-else-if="!filtered.length&&!loading">
+        <div class="e-ring" style="font-size:26px">◫</div>
+        <h2>暂无匹配内容</h2>
+        <p>此相册在当前筛选条件下没有文件</p>
+      </div>
 
-          <!-- "Uncategorized" at root -->
-          <div class="album-row" v-if="panelPath.length === 0"
-               :class="{ selected: selectedAlbum === 'None' }"
-               @click="selectAlbum('None', '未分类')">
-            <span class="album-row-icon">○</span>
-            <span class="album-row-name">未分类</span>
-          </div>
-
-          <div class="album-divider" v-if="panelPath.length === 0"></div>
-
-          <!-- Sub-folders -->
-          <div class="album-row" v-for="folder in currentFolders" :key="'f-'+folder"
-               @click="drillDown(folder)">
-            <span class="album-row-icon">▤</span>
-            <span class="album-row-name">{{ folder }}</span>
-            <span class="album-row-count">{{ getFolderCount(folder) }}</span>
-            <span class="album-row-arrow">›</span>
-          </div>
-
-          <!-- Leaf albums in this dir -->
-          <div class="album-row" v-for="album in currentLeafAlbums" :key="'a-'+album.key"
-               :class="{ selected: selectedAlbum === album.key }"
-               @click="selectAlbum(album.key, album.label)">
-            <span class="album-row-icon" style="color:var(--gold);">◈</span>
-            <span class="album-row-name">{{ album.label }}</span>
-            <span class="album-row-count">{{ albumCounts[album.key] || 0 }}</span>
-          </div>
-
-          <div class="album-row" v-if="currentFolders.length === 0 && currentLeafAlbums.length === 0 && panelPath.length > 0"
-               style="color:var(--muted); cursor:default;">
-            <span class="album-row-icon">—</span>
-            <span class="album-row-name">此目录下暂无相册</span>
+      <!-- Waterfall -->
+      <div class="wf-wrap" v-if="filtered.length">
+        <div class="wf" :data-cols="cols">
+          <div class="wfc" v-for="(item,idx) in filtered" :key="item.name"
+               :style="{animationDelay:(idx%30*28)+'ms'}">
+            <video v-if="isVid(item.name)" style="width:100%;display:block" controls preload="none">
+              <source :src="'/file/'+item.name" type="video/mp4">
+            </video>
+            <el-image v-else :src="'/file/'+item.name" :preview-src-list="['/file/'+item.name]" lazy></el-image>
+            <div class="cov">
+              <div class="ova">{{aLabel(item)}}</div>
+              <div class="ovn">{{fName(item)}}</div>
+              <div class="ovbs">
+                <button class="ovb c" @click.stop="doCopy(item.name)" title="复制链接">⎘</button>
+                <button class="ovb d" @click.stop="doDel(item.name)" title="删除">✕</button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Filter pills -->
-    <div class="filter-pills">
-      <button class="pill" :class="{ active: filterType==='all' }"     @click="setFilter('all')">全部</button>
-      <button class="pill" :class="{ active: filterType==='original' }" @click="setFilter('original')">原图</button>
-      <button class="pill" :class="{ active: filterType==='preview' }" @click="setFilter('preview')">预览</button>
-    </div>
-
-    <!-- Nav links -->
-    <div class="nav-links">
-      <a href="./admin.html" class="nav-link">列表</a>
-      <a href="./admin-imgtc.html" class="nav-link">网格</a>
-      <a href="./admin-waterfall.html" class="nav-link current">瀑布流</a>
-      <button class="nav-link" v-if="showLogoutButton" @click="handleLogout">退出</button>
-    </div>
-  </div>
-
-  <!-- ══ EMPTY STATE ══ -->
-  <div class="empty-state" v-if="selectedAlbum === ''">
-    <div class="empty-icon">◈</div>
-    <h2>选择一个相册开始浏览</h2>
-    <p>支持多级目录导航<br>点击顶部下拉菜单选择相册或分类</p>
-  </div>
-
-  <!-- ══ WATERFALL ══ -->
-  <div class="waterfall-container" v-else>
-    <div class="waterfall-item" v-for="(item, index) in filteredTableData" :key="item.name"
-         :style="{ animationDelay: (index % 30 * 30) + 'ms' }">
-      <video v-if="isVideo(item.name)" style="width:100%;display:block;" controls preload="none">
-        <source :src="'/file/'+item.name" type="video/mp4">
-      </video>
-      <el-image v-else :src="'/file/'+item.name" :preview-src-list="previewList(item.name)" lazy></el-image>
-
-      <div class="item-overlay">
-        <div class="overlay-album">{{ getAlbumLabel(item) }}</div>
-        <div class="overlay-name">{{ getFileName(item) }}</div>
-        <div class="overlay-actions">
-          <button class="overlay-btn copy" @click.stop="handleCopy(item.name)" title="复制链接">⎘</button>
-          <button class="overlay-btn danger" @click.stop="handleDelete(index, item.name)" title="删除">✕</button>
+        <div class="lz">
+          <button class="lbtn" v-if="cursor" @click="loadMore(false)" :disabled="loading">
+            <span class="spin" v-if="loading"></span>
+            <span>{{loading?'加载中…':'加载更多'}}</span>
+          </button>
+          <span class="lend" v-else>已加载全部内容</span>
         </div>
       </div>
-    </div>
+    </main>
   </div>
-
-  <!-- ══ LOAD MORE ══ -->
-  <div class="load-area" v-if="selectedAlbum !== ''">
-    <button class="load-btn" v-if="nextCursor" @click="loadMore(false)" :disabled="isLoading">
-      <span class="spinner" v-if="isLoading"></span>
-      <span>{{ isLoading ? '正在加载…' : '加载更多' }}</span>
-    </button>
-    <span class="load-end" v-else>已加载全部内容</span>
-  </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js" crossorigin="anonymous"></script>
 <script>
+Vue.component('tree-node',{
+  name:'tree-node',
+  props:['nk','node','depth','sel'],
+  data(){return{open:false}},
+  created(){if(this.match)this.open=true},
+  watch:{sel(){if(this.match&&!this.open)this.open=true}},
+  computed:{
+    hasK(){return!!Object.keys(this.node.kids||{}).length},
+    isAct(){return this.sel===this.node.fk},
+    isAnc(){return this.sel&&this.sel!==this.node.fk&&this.sel.startsWith(this.node.fk+'/')},
+    match(){return this.isAct||this.isAnc},
+    sk(){return Object.keys(this.node.kids||{}).sort((a,b)=>a.localeCompare(b))}
+  },
+  methods:{
+    click(e){e.stopPropagation();this.$emit('pick',this.node.fk);if(this.hasK)this.open=!this.open}
+  },
+  template:`<div>
+    <div class="trow" :class="{act:isAct,anc:isAnc}" :style="{paddingLeft:(10+depth*16)+'px'}" @click="click">
+      <span class="tchv" :class="{open:open&&hasK,blank:!hasK}">›</span>
+      <span class="tico" :class="hasK?'fold':'leaf'">{{hasK?(open?'▾':'▸'):'◈'}}</span>
+      <span class="tn" :title="nk">{{nk}}</span>
+      <span class="tc" v-if="node.tot">{{node.tot}}</span>
+    </div>
+    <div v-show="open&&hasK" style="overflow:hidden">
+      <tree-node v-for="k in sk" :key="k" :nk="k" :node="node.kids[k]"
+                 :depth="depth+1" :sel="sel" @pick="$emit('pick',$event)"></tree-node>
+    </div>
+  </div>`
+});
+
 new Vue({
-  el: '#app',
-  data: {
-    selectedAlbum: '',
-    selectedAlbumLabel: '',
-    filterType: 'all',
-    showLogoutButton: false,
-    tableData: [],
-    nextCursor: null,
-    isLoading: false,
-    autoFetchCount: 0,
-
-    // Album tree panel state
-    albumPanelOpen: false,
-    panelPath: [], // breadcrumb path segments within the panel
+  el:'#app',
+  data:{
+    data:[],cursor:null,loading:false,afc:0,
+    sel:'',ft:'all',q:'',sdQ:'',
+    cols:4,dark:true,sdOpen:true,isMob:false,showOut:false
   },
-
-  computed: {
-    // ── All unique album keys from loaded data ──
-    uniqueAlbumKeys() {
-      const set = new Set();
-      this.tableData.forEach(item => {
-        if (item.metadata && item.metadata.ListType && item.metadata.ListType !== 'None') {
-          set.add(item.metadata.ListType);
-        }
-      });
-      return Array.from(set);
+  computed:{
+    ukeys(){
+      const s=new Set();
+      this.data.forEach(i=>{const t=i.metadata&&i.metadata.ListType;if(t&&t!=='None'&&t!=='Block'&&t!=='White')s.add(t)});
+      return Array.from(s);
     },
-
-    // ── Count per album key ──
-    albumCounts() {
-      const counts = {};
-      this.tableData.forEach(item => {
-        const k = (item.metadata && item.metadata.ListType) ? item.metadata.ListType : 'None';
-        counts[k] = (counts[k] || 0) + 1;
-      });
-      return counts;
+    cnts(){
+      const c={};
+      this.data.forEach(i=>{const k=(i.metadata&&i.metadata.ListType)||'None';c[k]=(c[k]||0)+1});
+      return c;
     },
-
-    // ── Build tree: { 'folder': { 'subfolder': {...}, '__leaf__': [albumKey] } } ──
-    albumTree() {
-      const tree = {};
-      this.uniqueAlbumKeys.forEach(key => {
-        const parts = key.split('/');
-        let node = tree;
-        parts.forEach((part, i) => {
-          if (i === parts.length - 1) {
-            if (!node['__leaves__']) node['__leaves__'] = [];
-            node['__leaves__'].push({ key, label: part });
-          } else {
-            if (!node[part]) node[part] = {};
-            node = node[part];
-          }
+    uncnt(){return this.data.filter(i=>{const t=i.metadata&&i.metadata.ListType;return!t||t==='None'||t==='Block'||t==='White'}).length},
+    forest(){
+      const r={};
+      this.ukeys.slice().sort().forEach(fk=>{
+        const pts=fk.split('/');let cur=r;
+        pts.forEach((p,i)=>{
+          if(!cur[p])cur[p]={fk:pts.slice(0,i+1).join('/'),kids:{},cnt:0,tot:0};
+          if(i===pts.length-1)cur[p].cnt=this.cnts[fk]||0;
+          cur=cur[p].kids;
         });
       });
-      return tree;
+      const roll=n=>{n.tot=n.cnt;Object.values(n.kids).forEach(k=>{roll(k);n.tot+=k.tot})};
+      Object.values(r).forEach(roll);
+      return r;
     },
-
-    // ── Current tree node based on panelPath ──
-    currentNode() {
-      let node = this.albumTree;
-      for (const seg of this.panelPath) {
-        node = node[seg] || {};
-      }
-      return node;
+    sdResults(){
+      if(!this.sdQ.trim())return[];
+      const q=this.sdQ.toLowerCase();
+      return this.ukeys.filter(k=>k.toLowerCase().includes(q)).sort();
     },
-
-    currentFolders() {
-      return Object.keys(this.currentNode).filter(k => k !== '__leaves__').sort();
-    },
-
-    currentLeafAlbums() {
-      return (this.currentNode['__leaves__'] || []).sort((a,b) => a.label.localeCompare(b.label));
-    },
-
-    // ── Filtered data ──
-    filteredTableData() {
-      if (this.selectedAlbum === '') return [];
-
-      return this.tableData.filter(item => {
-        // Album match
-        let matchAlbum = true;
-        if (this.selectedAlbum !== 'All') {
-          const k = (item.metadata && item.metadata.ListType) ? item.metadata.ListType : 'None';
-          if (this.selectedAlbum === 'None') {
-            matchAlbum = (k === 'None');
-          } else {
-            // Support prefix match: selecting a folder key shows all children
-            matchAlbum = (k === this.selectedAlbum) || k.startsWith(this.selectedAlbum + '/');
-          }
-        }
-
-        // Type match
-        let matchType = true;
-        if (this.filterType !== 'all') {
-          const isPhoto = item.name.startsWith('A');
-          if (this.filterType === 'preview') matchType = isPhoto;
-          else if (this.filterType === 'original') matchType = !isPhoto;
-        }
-
-        return matchAlbum && matchType;
+    selSegs(){if(!this.sel||this.sel==='All'||this.sel==='None')return[];return this.sel.split('/')},
+    filtered(){
+      if(!this.sel)return[];
+      const sq=this.q.toLowerCase();
+      return this.data.filter(item=>{
+        const k=(item.metadata&&item.metadata.ListType)||'None';
+        const ma=this.sel==='All'?true:this.sel==='None'?(k==='None'||k==='Block'||k==='White'):(k===this.sel||k.startsWith(this.sel+'/'));
+        if(!ma)return false;
+        if(this.ft!=='all'){const p=item.name.startsWith('A');if(this.ft==='preview'&&!p)return false;if(this.ft==='original'&&p)return false}
+        if(sq){const fn=((item.metadata&&item.metadata.fileName)||item.name).toLowerCase();if(!fn.includes(sq)&&!item.name.toLowerCase().includes(sq))return false}
+        return true;
       });
     }
   },
-
-  watch: {
-    selectedAlbum(v) {
-      if (v !== '') { this.autoFetchCount = 0; this.$nextTick(() => this.triggerAutoLoad()); }
+  watch:{
+    sel(v){if(v){this.afc=0;this.$nextTick(()=>this.auto())}},
+    ft(){if(this.sel){this.afc=0;this.$nextTick(()=>this.auto())}},
+    q(){if(this.sel){this.afc=0;this.$nextTick(()=>this.auto())}}
+  },
+  methods:{
+    pick(k){this.sel=k;if(this.isMob)this.sdOpen=false},
+    setCols(n){this.cols=n;localStorage.setItem('wf_cols',n)},
+    toggleTheme(){
+      this.dark=!this.dark;
+      const t=this.dark?'dark':'light';
+      document.documentElement.setAttribute('data-theme',t);
+      localStorage.setItem('gallery_theme',t);
     },
-    filterType() {
-      if (this.selectedAlbum !== '') { this.autoFetchCount = 0; this.$nextTick(() => this.triggerAutoLoad()); }
+    isVid(n){return/\.(mp4|webm|ogg|mov|avi)$/i.test(n)},
+    aLabel(item){const k=(item.metadata&&item.metadata.ListType&&item.metadata.ListType!=='None')?item.metadata.ListType:'未分类';return k.split('/').pop()},
+    fName(item){return(item.metadata&&item.metadata.fileName)||item.name},
+    doCopy(key){
+      const t=location.origin+'/file/'+key;
+      (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject())
+        .catch(()=>{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;clip:rect(0 0 0 0)';document.body.appendChild(a);a.select();document.execCommand('copy');document.body.removeChild(a)});
+      this.$message({message:'链接已复制',type:'success',duration:1800});
+    },
+    doDel(key){
+      if(!confirm('确认删除该文件？'))return;
+      fetch('./api/manage/delete/'+key,{method:'GET',credentials:'include'})
+        .then(()=>{const i=this.data.findIndex(f=>f.name===key);if(i>-1)this.data.splice(i,1);this.$message.success('已删除')})
+        .catch(()=>this.$message.error('删除失败'));
+    },
+    async loadMore(ini=false){
+      if(this.loading)return;if(!ini&&!this.cursor)return;
+      this.loading=true;
+      let url='./api/manage/list?limit=300';
+      if(!ini&&this.cursor)url+='&cursor='+encodeURIComponent(this.cursor);
+      try{
+        const res=await fetch(url,{method:'GET',credentials:'include'});
+        if(res.status===401){location.href='./api/manage/login';return}
+        const d=await res.json();
+        if(ini)this.data=[];
+        this.data.push(...(d.keys||[]).map(i=>Object.freeze(i)));
+        this.cursor=d.list_complete?null:d.cursor;
+      }catch{this.$message.error('加载失败，请检查网络')}
+      finally{this.loading=false;this.$nextTick(()=>this.auto())}
+    },
+    auto(){if(!this.sel)return;if(this.filtered.length<15&&this.cursor&&!this.loading&&this.afc<5){this.afc++;this.loadMore(false)}},
+    chkMob(){
+      const was=this.isMob;this.isMob=window.innerWidth<1000;
+      if(!was&&this.isMob)this.sdOpen=false;
+      if(was&&!this.isMob)this.sdOpen=true;
     }
   },
-
-  methods: {
-    // ── Album panel ──
-    toggleAlbumPanel() {
-      this.albumPanelOpen = !this.albumPanelOpen;
-    },
-    closePanels() {
-      this.albumPanelOpen = false;
-    },
-    drillDown(folder) {
-      this.panelPath.push(folder);
-    },
-    navigateTo(idx) {
-      if (idx === null) {
-        this.panelPath = [];
-      } else {
-        this.panelPath = this.panelPath.slice(0, idx + 1);
-      }
-    },
-    selectAlbum(key, label) {
-      this.selectedAlbum = key;
-      this.selectedAlbumLabel = label;
-      this.albumPanelOpen = false;
-    },
-    setFilter(f) {
-      this.filterType = f;
-    },
-
-    // ── Count all items under a folder prefix ──
-    getFolderCount(folder) {
-      const prefix = [...this.panelPath, folder].join('/');
-      let count = 0;
-      this.tableData.forEach(item => {
-        const k = (item.metadata && item.metadata.ListType) ? item.metadata.ListType : '';
-        if (k === prefix || k.startsWith(prefix + '/')) count++;
-      });
-      return count || '';
-    },
-
-    // ── Helpers ──
-    isVideo(name) {
-      return /\.(mp4|webm|ogg|mov)$/i.test(name);
-    },
-    previewList(name) {
-      return ['/file/' + name];
-    },
-    getAlbumLabel(item) {
-      const k = (item.metadata && item.metadata.ListType && item.metadata.ListType !== 'None')
-        ? item.metadata.ListType : '未分类';
-      const parts = k.split('/');
-      return parts[parts.length - 1];
-    },
-    getFileName(item) {
-      return (item.metadata && item.metadata.fileName) ? item.metadata.fileName : item.name;
-    },
-
-    // ── Actions ──
-    handleCopy(key) {
-      const text = `${location.origin}/file/${key}`;
-      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
-        .catch(() => {
-          const ta = document.createElement('textarea');
-          ta.value = text; ta.style.cssText = 'position:fixed;top:0;clip:rect(0 0 0 0)';
-          document.body.appendChild(ta); ta.select();
-          document.execCommand('copy'); document.body.removeChild(ta);
-        });
-      this.$message({ message: '链接已复制', type: 'success', duration: 1800 });
-    },
-    handleDelete(index, key) {
-      if (!confirm('确认删除该图片？')) return;
-      fetch('./api/manage/delete/' + key, { method: 'GET', credentials: 'include' })
-        .then(() => {
-          const i = this.tableData.findIndex(it => it.name === key);
-          if (i > -1) this.tableData.splice(i, 1);
-          this.$message.success('已删除');
-        })
-        .catch(() => this.$message.error('删除失败'));
-    },
-    handleLogout() {
-      location.href = './api/manage/logout';
-    },
-
-    // ── Data loading ──
-    async loadMore(isInitial = false) {
-      if (this.isLoading) return;
-      if (!isInitial && !this.nextCursor) return;
-
-      this.isLoading = true;
-      let url = './api/manage/list?limit=300';
-      if (!isInitial && this.nextCursor) url += '&cursor=' + encodeURIComponent(this.nextCursor);
-
-      try {
-        const res = await fetch(url, { method: 'GET', credentials: 'include' });
-        if (res.status === 401) { location.href = './api/manage/login'; return; }
-        const data = await res.json();
-        const items = (data.keys || []).map(item => Object.freeze(item));
-        this.tableData.push(...items);
-        this.nextCursor = data.list_complete ? null : data.cursor;
-      } catch {
-        this.$message.error('加载失败，请检查网络');
-      } finally {
-        this.isLoading = false;
-        this.$nextTick(() => this.triggerAutoLoad());
-      }
-    },
-
-    triggerAutoLoad() {
-      if (this.selectedAlbum === '') return;
-      if (this.filteredTableData.length < 15 && this.nextCursor && !this.isLoading && this.autoFetchCount < 5) {
-        this.autoFetchCount++;
-        this.loadMore(false);
-      }
-    }
-  },
-
-  mounted() {
-    fetch('./api/manage/check', { method: 'GET', credentials: 'include' })
-      .then(r => r.text())
-      .then(t => {
-        if (t === 'true') this.showLogoutButton = true;
-        else if (t !== 'Not using basic auth.') location.href = './api/manage/login';
-      });
-
-    // Close panel on outside click
-    document.addEventListener('click', () => { this.albumPanelOpen = false; });
-
+  mounted(){
+    this.chkMob();
+    window.addEventListener('resize',this.chkMob);
+    document.addEventListener('click',e=>{
+      if(this.isMob&&this.sdOpen&&!e.target.closest('.sd')&&!e.target.closest('.hbg-btn'))this.sdOpen=false
+    });
+    const th=localStorage.getItem('gallery_theme')||'dark';
+    this.dark=th==='dark';
+    document.documentElement.setAttribute('data-theme',th);
+    this.cols=parseInt(localStorage.getItem('wf_cols'))||4;
+    fetch('./api/manage/check',{method:'GET',credentials:'include'})
+      .then(r=>r.text())
+      .then(t=>{if(t==='true')this.showOut=true;else if(t!=='Not using basic auth.')location.href='./api/manage/login'});
     this.loadMore(true);
-  }
-})
+  },
+  beforeDestroy(){window.removeEventListener('resize',this.chkMob)}
+});
 </script>
 </body>
 </html>
