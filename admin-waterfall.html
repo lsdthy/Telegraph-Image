@@ -1,378 +1,789 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Telegraph-Image 响应式瀑布流</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css"
-    integrity="sha256-ghr1zmXTODLKl1HULQd6fq1MIe7m3FJiNTOCT8sddLM=" crossorigin="anonymous">
+  <title>画廊 · Gallery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css" crossorigin="anonymous">
   <style>
+    /* ── Design Tokens ── */
+    :root {
+      --bg:         #0a0a0c;
+      --surface:    #111116;
+      --card:       #16161d;
+      --border:     rgba(255,255,255,0.07);
+      --gold:       #c9a84c;
+      --gold-dim:   #8a6f30;
+      --gold-glow:  rgba(201,168,76,0.15);
+      --text:       #e8e4dc;
+      --muted:      #6b6878;
+      --danger:     #c0392b;
+      --success:    #27ae60;
+      --radius:     12px;
+      --font-serif: 'Playfair Display', serif;
+      --font-sans:  'DM Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
     body {
-      background: linear-gradient(90deg, #ffd7e4 0%, #c8f1ff 100%);
-      margin: 0;
-      padding: 0;
-      font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
     }
 
-    /* 滚动条美化 */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-corner { background-color: transparent; }
-    ::-webkit-scrollbar-thumb {
-      background-color: #49b1f5;
-      background-image: -webkit-linear-gradient(45deg, hsla(0, 0%, 100%, .4) 25%, transparent 0, transparent 50%, hsla(0, 0%, 100%, .4) 0, hsla(0, 0%, 100%, .4) 75%, transparent 0, transparent);
-      border-radius: 2em;
+    /* ── Noise texture overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
     }
-    ::-webkit-scrollbar-track { background-color: rgba(73, 177, 245, .2); border-radius: 2em; }
 
-    /* === 顶部导航栏 === */
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 99px; }
+
+    /* ══════════════════════════════
+       HEADER
+    ══════════════════════════════ */
     .header-bar {
-      background: rgba(255, 255, 255, 0.8);
-      box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
-      padding: 15px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10,10,12,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
       display: flex;
-      flex-wrap: wrap; /* 允许换行，防止窄屏挤压 */
-      justify-content: space-between;
       align-items: center;
-      gap: 15px;
+      gap: 20px;
+      height: 64px;
     }
 
-    /* === 核心：纯 CSS 响应式瀑布流布局 === */
+    .logo {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      color: var(--gold);
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .logo span { color: var(--muted); font-size: 13px; font-family: var(--font-sans); font-weight: 300; margin-left: 8px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    /* ── Album selector trigger ── */
+    .album-trigger {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      min-width: 220px;
+      position: relative;
+      user-select: none;
+    }
+    .album-trigger:hover { border-color: var(--gold-dim); background: var(--card); }
+    .album-trigger.active { border-color: var(--gold); }
+
+    .album-trigger-label {
+      flex: 1;
+      font-size: 13px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .album-trigger-label.placeholder { color: var(--muted); }
+    .album-trigger-icon {
+      color: var(--muted);
+      font-size: 11px;
+      transition: transform 0.2s;
+    }
+    .album-trigger.active .album-trigger-icon { transform: rotate(180deg); color: var(--gold); }
+
+    /* ── Album dropdown panel ── */
+    .album-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 320px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+      z-index: 200;
+      overflow: hidden;
+      animation: panelIn 0.18s ease;
+    }
+    @keyframes panelIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Breadcrumb ── */
+    .album-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 12px 14px 8px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .crumb-item {
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .crumb-item:hover { color: var(--gold); }
+    .crumb-item.current { color: var(--text); cursor: default; }
+    .crumb-sep { color: var(--border); font-size: 10px; }
+
+    /* ── Album tree list ── */
+    .album-list {
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 6px 0;
+    }
+
+    .album-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .album-row:hover { background: var(--card); }
+    .album-row.selected { background: var(--gold-glow); color: var(--gold); }
+
+    .album-row-icon { font-size: 14px; flex-shrink: 0; }
+    .album-row-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .album-row-count { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+    .album-row-arrow { font-size: 10px; color: var(--muted); flex-shrink: 0; }
+
+    .album-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+    /* ── Filter pills ── */
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+    }
+    .pill {
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.2s;
+      letter-spacing: 0.02em;
+    }
+    .pill:hover { border-color: var(--gold-dim); color: var(--text); }
+    .pill.active { background: var(--gold); border-color: var(--gold); color: #0a0a0c; font-weight: 700; }
+
+    /* ── Nav links ── */
+    .nav-links { display: flex; gap: 6px; margin-left: auto; }
+    .nav-link {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      text-decoration: none;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      background: transparent;
+      transition: all 0.2s;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .nav-link:hover { color: var(--text); border-color: var(--gold-dim); }
+    .nav-link.current { color: var(--gold); border-color: var(--gold-dim); }
+
+    /* ══════════════════════════════
+       EMPTY STATE
+    ══════════════════════════════ */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 64px);
+      padding: 60px 20px;
+      text-align: center;
+      animation: fadeIn 0.5s ease;
+    }
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: var(--muted);
+      margin-bottom: 24px;
+      background: var(--surface);
+    }
+    .empty-state h2 {
+      font-family: var(--font-serif);
+      font-size: 26px;
+      color: var(--text);
+      font-weight: 400;
+      margin-bottom: 10px;
+    }
+    .empty-state p { color: var(--muted); font-size: 14px; line-height: 1.7; }
+
+    /* ══════════════════════════════
+       WATERFALL GRID
+    ══════════════════════════════ */
     .waterfall-container {
-      column-count: 5; /* 默认电脑端5列 */
-      column-gap: 15px;
-      padding: 20px;
+      column-count: 5;
+      column-gap: 12px;
+      padding: 20px 20px;
       width: 100%;
-      box-sizing: border-box;
     }
 
     .waterfall-item {
-      break-inside: avoid; /* 防止元素被列截断 */
-      margin-bottom: 15px;
+      break-inside: avoid;
+      margin-bottom: 12px;
       position: relative;
-      border-radius: 12px;
+      border-radius: var(--radius);
       overflow: hidden;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      background: #fff;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+      background: var(--card);
+      border: 1px solid var(--border);
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease, border-color 0.3s ease;
+      animation: itemReveal 0.4s ease both;
+    }
+
+    @keyframes itemReveal {
+      from { opacity: 0; transform: translateY(12px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     .waterfall-item:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      transform: translateY(-4px) scale(1.01);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 0 0 1px var(--gold-dim);
+      border-color: var(--gold-dim);
+      z-index: 5;
     }
 
-    .waterfall-item .el-image, .waterfall-item video {
+    .waterfall-item .el-image,
+    .waterfall-item video {
       width: 100%;
       display: block;
     }
 
-    /* 悬浮信息遮罩层 */
-    .item-info {
+    /* ── Hover overlay ── */
+    .item-overlay {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding: 15px 10px 10px 10px;
-      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 55%);
       opacity: 0;
-      transition: opacity 0.3s;
+      transition: opacity 0.25s ease;
       display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      z-index: 2; /* 确保悬浮层在图片上方 */
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 14px 12px 12px;
     }
+    .waterfall-item:hover .item-overlay { opacity: 1; }
 
-    .waterfall-item:hover .item-info {
-      opacity: 1;
+    .overlay-album {
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 4px;
+      font-weight: 500;
     }
+    .overlay-name {
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 10px;
+    }
+    .overlay-actions { display: flex; gap: 6px; }
+    .overlay-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: transform 0.15s, background 0.15s;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(4px);
+      color: #fff;
+    }
+    .overlay-btn:hover { transform: scale(1.15); background: rgba(255,255,255,0.25); }
+    .overlay-btn.danger:hover { background: var(--danger); }
+    .overlay-btn.copy:hover { background: var(--gold); color: #0a0a0c; }
 
-    .info-left { display: flex; flex-direction: column; gap: 5px; }
-    .info-right { display: flex; gap: 5px; }
-
-    /* === 响应式断点 === */
-    @media (max-width: 1400px) { 
-      .waterfall-container { column-count: 4; } 
-    }
-    @media (max-width: 1024px) { 
-      .waterfall-container { column-count: 3; } 
-    }
-    @media (max-width: 768px) { 
-      /* 平板端调整栏目为2列，并优化顶部导航排列 */
-      .waterfall-container { column-count: 2; padding: 15px; } 
-      .header-bar { flex-direction: column; justify-content: center; text-align: center; }
-    }
-    @media (max-width: 480px) { 
-      /* 手机端调整栏目为单列（1列） */
-      .waterfall-container { column-count: 1; padding: 10px; } 
-      .waterfall-item { margin-bottom: 15px; border-radius: 8px;} 
-    }
-
-    /* 缺省提示页样式 */
-    .empty-state {
+    /* ── Load more ── */
+    .load-area {
       text-align: center;
-      padding: 100px 20px;
-      color: #606266;
+      padding: 32px 0 56px;
     }
-    .empty-state i {
-      font-size: 80px;
-      color: #909399;
-      margin-bottom: 20px;
-      display: block;
+    .load-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 32px;
+      background: transparent;
+      border: 1px solid var(--gold-dim);
+      border-radius: 99px;
+      color: var(--gold);
+      font-size: 13px;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: all 0.25s;
+      letter-spacing: 0.04em;
+    }
+    .load-btn:hover { background: var(--gold-glow); border-color: var(--gold); }
+    .load-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .load-end { color: var(--muted); font-size: 13px; letter-spacing: 0.04em; }
+    .load-end::before { content: '— '; }
+    .load-end::after { content: ' —'; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--gold-dim);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
+    /* ══════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════ */
+    @media (max-width: 1400px) { .waterfall-container { column-count: 4; } }
+    @media (max-width: 1100px) { .waterfall-container { column-count: 3; } }
+    @media (max-width: 768px) {
+      .waterfall-container { column-count: 2; padding: 12px; column-gap: 8px; }
+      .waterfall-item { margin-bottom: 8px; }
+      .header-bar { padding: 0 16px; gap: 10px; height: auto; min-height: 64px; flex-wrap: wrap; padding-top: 12px; padding-bottom: 12px; }
+      .logo span { display: none; }
+      .nav-links { display: none; }
+    }
+    @media (max-width: 480px) { .waterfall-container { column-count: 1; } }
+
+    /* ── Element UI overrides ── */
+    .el-image__inner { display: block !important; vertical-align: middle !important; }
+    .el-image__error { background: var(--card); color: var(--muted); min-height: 80px; }
   </style>
-  <script src="https://js.sentry-cdn.com/219f636ac7bde5edab2c3e16885cb535.min.js" crossorigin="anonymous"></script>
 </head>
-
 <body>
-  <div id="app">
-    
-    <div class="header-bar">
-      <div style="font-size: 24px; font-weight: bold; color: #333;">Waterfall Gallery</div>
-      
-      <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
-        <el-select v-model="selectedAlbum" size="small" style="width: 180px;" placeholder="请先选择相册分类">
-          <el-option label="-- 请选择相册 --" value="" disabled></el-option>
-          <el-option label="所有相册 (全览)" value="All"></el-option>
-          <el-option label="未分类" value="None"></el-option>
-          <el-option v-for="album in uniqueAlbums" :key="album" :label="album" :value="album"></el-option>
-        </el-select>
+<div id="app" @click.self="closePanels">
 
-        <el-radio-group v-model="filterType" size="small">
-          <el-radio-button label="all">全部</el-radio-button>
-          <el-radio-button label="original">原图</el-radio-button>
-          <el-radio-button label="preview">预览图</el-radio-button>
-        </el-radio-group>
+  <!-- ══ HEADER ══ -->
+  <div class="header-bar">
+    <div class="logo">Gallery<span>Admin</span></div>
+
+    <!-- Album tree selector -->
+    <div style="position: relative;" ref="albumSelectorWrap">
+      <div class="album-trigger" :class="{ active: albumPanelOpen }" @click.stop="toggleAlbumPanel">
+        <span style="font-size:14px; color: var(--muted);">▤</span>
+        <span class="album-trigger-label" :class="{ placeholder: !selectedAlbumLabel }">
+          {{ selectedAlbumLabel || '选择相册 / 目录' }}
+        </span>
+        <span class="album-trigger-icon">▾</span>
       </div>
 
-      <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-        <a href="./admin.html"><el-button size="mini" type="success">列表视图</el-button></a>
-        <a href="./admin-imgtc.html"><el-button size="mini" type="warning">网格视图</el-button></a>
-        <el-button v-if="showLogoutButton" size="mini" type="info" @click="handleLogout()">退出</el-button>
-      </div>
-    </div>
+      <!-- Cascading Panel -->
+      <div class="album-panel" v-if="albumPanelOpen" @click.stop>
 
-    <div class="empty-state" v-if="selectedAlbum === ''">
-      <i class="el-icon-picture-outline"></i>
-      <h2>请在上方下拉菜单中选择一个相册</h2>
-      <p>选择相册后即可开启浏览</p>
-    </div>
+        <!-- Breadcrumb -->
+        <div class="album-breadcrumb">
+          <span class="crumb-item" @click="navigateTo(null)">根目录</span>
+          <template v-for="(crumb, ci) in panelPath">
+            <span class="crumb-sep">›</span>
+            <span class="crumb-item" :class="{ current: ci === panelPath.length-1 }"
+                  @click="navigateTo(ci)">{{ crumb }}</span>
+          </template>
+        </div>
 
-    <div class="waterfall-container" v-else>
-      <div class="waterfall-item" v-for="(item, index) in filteredTableData" :key="item.name">
-        
-        <video v-if="item.name.indexOf('.mp4')>0" style="width: 100%; display: block;" controls>
-          <source :src="'/file/'+item.name" type="video/mp4">
-        </video>
-        <el-image v-else :src="'/file/'+item.name" :preview-src-list="['/file/'+item.name]" lazy></el-image>
+        <div class="album-list">
 
-        <div class="item-info">
-          <div class="info-left">
-            <el-tag size="mini" type="success" effect="dark" v-if="item.metadata && item.metadata.ListType && item.metadata.ListType !== 'None'">
-              {{ item.metadata.ListType }}
-            </el-tag>
-            <el-tag size="mini" type="info" effect="dark" v-else>未分类</el-tag>
-            <span style="color: #eee; font-size: 10px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-              {{ item.metadata ? item.metadata.fileName : item.name }}
-            </span>
+          <!-- "All" shortcut at root -->
+          <div class="album-row" v-if="panelPath.length === 0"
+               :class="{ selected: selectedAlbum === 'All' }"
+               @click="selectAlbum('All', '全览 · All')">
+            <span class="album-row-icon">✦</span>
+            <span class="album-row-name">所有相册（全览）</span>
           </div>
-          <div class="info-right">
-            <el-button type="primary" icon="el-icon-document-copy" circle size="mini" @click="handleCopy(item.name)" title="复制链接"></el-button>
-            <el-button type="danger" icon="el-icon-delete" circle size="mini" @click="handleDelete(index, item.name)" title="删除图片"></el-button>
+
+          <!-- "Uncategorized" at root -->
+          <div class="album-row" v-if="panelPath.length === 0"
+               :class="{ selected: selectedAlbum === 'None' }"
+               @click="selectAlbum('None', '未分类')">
+            <span class="album-row-icon">○</span>
+            <span class="album-row-name">未分类</span>
+          </div>
+
+          <div class="album-divider" v-if="panelPath.length === 0"></div>
+
+          <!-- Sub-folders -->
+          <div class="album-row" v-for="folder in currentFolders" :key="'f-'+folder"
+               @click="drillDown(folder)">
+            <span class="album-row-icon">▤</span>
+            <span class="album-row-name">{{ folder }}</span>
+            <span class="album-row-count">{{ getFolderCount(folder) }}</span>
+            <span class="album-row-arrow">›</span>
+          </div>
+
+          <!-- Leaf albums in this dir -->
+          <div class="album-row" v-for="album in currentLeafAlbums" :key="'a-'+album.key"
+               :class="{ selected: selectedAlbum === album.key }"
+               @click="selectAlbum(album.key, album.label)">
+            <span class="album-row-icon" style="color:var(--gold);">◈</span>
+            <span class="album-row-name">{{ album.label }}</span>
+            <span class="album-row-count">{{ albumCounts[album.key] || 0 }}</span>
+          </div>
+
+          <div class="album-row" v-if="currentFolders.length === 0 && currentLeafAlbums.length === 0 && panelPath.length > 0"
+               style="color:var(--muted); cursor:default;">
+            <span class="album-row-icon">—</span>
+            <span class="album-row-name">此目录下暂无相册</span>
           </div>
         </div>
       </div>
     </div>
 
-    <div style="text-align: center; padding: 20px 0 40px 0;" v-if="selectedAlbum !== ''">
-      <el-button v-if="nextCursor" @click="loadMore(false)" type="primary" round shadow :loading="isLoading">
-        {{ isLoading ? '正在云端极速打捞...' : '加载更多图片 ↓' }}
-      </el-button>
-      <span v-else style="color: #888; font-size: 14px;">没有更多内容啦 ~</span>
+    <!-- Filter pills -->
+    <div class="filter-pills">
+      <button class="pill" :class="{ active: filterType==='all' }"     @click="setFilter('all')">全部</button>
+      <button class="pill" :class="{ active: filterType==='original' }" @click="setFilter('original')">原图</button>
+      <button class="pill" :class="{ active: filterType==='preview' }" @click="setFilter('preview')">预览</button>
     </div>
 
+    <!-- Nav links -->
+    <div class="nav-links">
+      <a href="./admin.html" class="nav-link">列表</a>
+      <a href="./admin-imgtc.html" class="nav-link">网格</a>
+      <a href="./admin-waterfall.html" class="nav-link current">瀑布流</a>
+      <button class="nav-link" v-if="showLogoutButton" @click="handleLogout">退出</button>
+    </div>
   </div>
-</body>
+
+  <!-- ══ EMPTY STATE ══ -->
+  <div class="empty-state" v-if="selectedAlbum === ''">
+    <div class="empty-icon">◈</div>
+    <h2>选择一个相册开始浏览</h2>
+    <p>支持多级目录导航<br>点击顶部下拉菜单选择相册或分类</p>
+  </div>
+
+  <!-- ══ WATERFALL ══ -->
+  <div class="waterfall-container" v-else>
+    <div class="waterfall-item" v-for="(item, index) in filteredTableData" :key="item.name"
+         :style="{ animationDelay: (index % 30 * 30) + 'ms' }">
+      <video v-if="isVideo(item.name)" style="width:100%;display:block;" controls preload="none">
+        <source :src="'/file/'+item.name" type="video/mp4">
+      </video>
+      <el-image v-else :src="'/file/'+item.name" :preview-src-list="previewList(item.name)" lazy></el-image>
+
+      <div class="item-overlay">
+        <div class="overlay-album">{{ getAlbumLabel(item) }}</div>
+        <div class="overlay-name">{{ getFileName(item) }}</div>
+        <div class="overlay-actions">
+          <button class="overlay-btn copy" @click.stop="handleCopy(item.name)" title="复制链接">⎘</button>
+          <button class="overlay-btn danger" @click.stop="handleDelete(index, item.name)" title="删除">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LOAD MORE ══ -->
+  <div class="load-area" v-if="selectedAlbum !== ''">
+    <button class="load-btn" v-if="nextCursor" @click="loadMore(false)" :disabled="isLoading">
+      <span class="spinner" v-if="isLoading"></span>
+      <span>{{ isLoading ? '正在加载…' : '加载更多' }}</span>
+    </button>
+    <span class="load-end" v-else>已加载全部内容</span>
+  </div>
+
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js" crossorigin="anonymous"></script>
-
 <script>
-  new Vue({
-    el: '#app',
-    data: {
-      selectedAlbum: '', // 默认设为空，进入时不加载任何图片防止卡顿
-      filterType: 'all', 
-      showLogoutButton: false,
-      tableData: [],
-      nextCursor: null,
+new Vue({
+  el: '#app',
+  data: {
+    selectedAlbum: '',
+    selectedAlbumLabel: '',
+    filterType: 'all',
+    showLogoutButton: false,
+    tableData: [],
+    nextCursor: null,
+    isLoading: false,
+    autoFetchCount: 0,
 
-      // 性能优化专属变量
-      isLoading: false, 
-      autoFetchCount: 0 // 防止极端情况下的无限死循环拉取
+    // Album tree panel state
+    albumPanelOpen: false,
+    panelPath: [], // breadcrumb path segments within the panel
+  },
+
+  computed: {
+    // ── All unique album keys from loaded data ──
+    uniqueAlbumKeys() {
+      const set = new Set();
+      this.tableData.forEach(item => {
+        if (item.metadata && item.metadata.ListType && item.metadata.ListType !== 'None') {
+          set.add(item.metadata.ListType);
+        }
+      });
+      return Array.from(set);
     },
-    computed: {
-      uniqueAlbums() {
-        const albums = new Set();
-        this.tableData.forEach(item => {
-          if (item.metadata && item.metadata.ListType && item.metadata.ListType !== 'None') {
-            albums.add(item.metadata.ListType);
+
+    // ── Count per album key ──
+    albumCounts() {
+      const counts = {};
+      this.tableData.forEach(item => {
+        const k = (item.metadata && item.metadata.ListType) ? item.metadata.ListType : 'None';
+        counts[k] = (counts[k] || 0) + 1;
+      });
+      return counts;
+    },
+
+    // ── Build tree: { 'folder': { 'subfolder': {...}, '__leaf__': [albumKey] } } ──
+    albumTree() {
+      const tree = {};
+      this.uniqueAlbumKeys.forEach(key => {
+        const parts = key.split('/');
+        let node = tree;
+        parts.forEach((part, i) => {
+          if (i === parts.length - 1) {
+            if (!node['__leaves__']) node['__leaves__'] = [];
+            node['__leaves__'].push({ key, label: part });
+          } else {
+            if (!node[part]) node[part] = {};
+            node = node[part];
           }
         });
-        return Array.from(albums);
-      },
-      // 增强版的图片分类过滤逻辑：相册过滤 + 画质过滤 (基于 Telegram 接口特征)
-      filteredTableData() {
-        if (this.selectedAlbum === '') return [];
-
-        return this.tableData.filter(data => {
-          // 1. 相册判断
-          let matchAlbum = true;
-          if (this.selectedAlbum !== 'All') {
-            const itemAlbum = (data.metadata && data.metadata.ListType) ? data.metadata.ListType : 'None';
-            matchAlbum = (itemAlbum === this.selectedAlbum);
-          }
-
-          // 2. 原图/预览图 智能底层过滤 (无须 metadata 标签)
-          let matchType = true;
-          if (this.filterType !== 'all') {
-            // Telegram Photo API 返回的 file_id 永远以 A 开头
-            // Telegram Document API 返回的 file_id 会以 B 等其他字母开头
-            const isPhoto = data.name.startsWith('A');
-            
-            if (this.filterType === 'preview') {
-              matchType = isPhoto;
-            } else if (this.filterType === 'original') {
-              matchType = !isPhoto;
-            }
-          }
-
-          return matchAlbum && matchType; 
-        });
-      }
+      });
+      return tree;
     },
-    watch: {
-      // 当用户切换分类或画质时，重置打捞计数器，并触发智能打捞
-      selectedAlbum(newVal) { 
-        if (newVal !== '') {
-          this.autoFetchCount = 0; 
-          this.triggerAutoLoad(); 
-        }
-      },
-      filterType() { 
-        if (this.selectedAlbum !== '') {
-          this.autoFetchCount = 0; 
-          this.triggerAutoLoad(); 
-        }
+
+    // ── Current tree node based on panelPath ──
+    currentNode() {
+      let node = this.albumTree;
+      for (const seg of this.panelPath) {
+        node = node[seg] || {};
       }
+      return node;
     },
-    methods: {
-      handleDelete(index, key) {
-        if (confirm("确认删除该图片吗?")) {
-          var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
-          fetch("./api/manage/delete/" + key, requestOptions)
-            .then(response => response.text())
-            .then(() => { 
-              // 从本地数据中移除 (哪怕数据被 freeze 冻结了，依然可以从数组中 splice 移除它)
-              const realIndex = this.tableData.findIndex(item => item.name === key);
-              if(realIndex > -1) this.tableData.splice(realIndex, 1);
-              this.$message.success('删除成功');
-            })
-            .catch(error => alert("网络异常"));
-        }
-      },
-      handleCopy(key) {
-        const text = `${document.location.origin}/file/${key}`;
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(text);
-        } else {
-          const textarea = document.createElement('textarea');
-          document.body.appendChild(textarea);
-          textarea.style.position = 'fixed';
-          textarea.style.clip = 'rect(0 0 0 0)';
-          textarea.style.top = '10px';
-          textarea.value = text;
-          textarea.select();
-          document.execCommand('copy', true);
-          document.body.removeChild(textarea);
-        }
-        this.$message({ message: '复制链接成功', type: 'success' });
-      },
-      handleLogout() {
-        window.location.href = "./api/manage/logout";
-      },
-      
-      // === 核心优化：接管全局的加载逻辑 ===
-      async loadMore(isInitial = false) {
-        if (this.isLoading) return;
-        if (!isInitial && !this.nextCursor) return;
 
-        this.isLoading = true;
-        const opts = { method: 'GET', credentials: 'include' };
-        
-        // 【关键提速点】：单次请求的数据量从 100 跃升至 300
-        let url = `./api/manage/list?limit=300`;
-        if (!isInitial && this.nextCursor) {
-          url += `&cursor=${encodeURIComponent(this.nextCursor)}`;
-        }
-
-        try {
-          const response = await fetch(url, opts);
-          if (response.status === 401) {
-            window.location.href = "./api/manage/login";
-            return;
-          }
-          
-          const result = await response.json();
-          
-          // 【性能黑科技】：冻结拉取到的对象，阻止 Vue 进行深层响应式绑定，能省下 80% 的 CPU 开销！
-          const newItems = (result.keys || []).map(item => Object.freeze(item));
-          
-          this.tableData = this.tableData.concat(newItems);
-          this.nextCursor = result.list_complete ? null : result.cursor;
-          
-        } catch (e) {
-          this.$message.error("加载失败，请检查网络");
-        } finally {
-          this.isLoading = false;
-          
-          // 当前批次加载完后，评估一下屏幕满不满，需不需要继续打捞
-          this.$nextTick(() => {
-            this.triggerAutoLoad();
-          });
-        }
-      },
-
-      // === 智能打捞引擎 ===
-      triggerAutoLoad() {
-        if (this.selectedAlbum === '') return; 
-
-        // 条件：当前筛选出的图片太少（小于15张导致屏幕留白）+ 还有下一页 + 当前没有在加载中 + 连续自动打捞不超过 5 次
-        if (this.filteredTableData.length < 15 && this.nextCursor && !this.isLoading && this.autoFetchCount < 5) {
-          this.autoFetchCount++;
-          this.loadMore(false); 
-        }
-      }
+    currentFolders() {
+      return Object.keys(this.currentNode).filter(k => k !== '__leaves__').sort();
     },
-    mounted() {
-      var requestOptions = { method: 'GET', redirect: 'follow', credentials: 'include' };
-      
-      // 检查登录状态
-      fetch("./api/manage/check", requestOptions)
-        .then(response => response.text())
-        .then(result => {
-          if (result == "true") {
-            this.showLogoutButton = true;
-          } else if (result != "Not using basic auth.") {
-            window.location.href = "./api/manage/login";
-          }
-        });
 
-      // 页面挂载完成，立刻在后台静默发起首次极速加载（300条）
-      // 此时界面是选择提示，但在用户选择前，数据就已经备好一部分了
-      this.loadMore(true);
+    currentLeafAlbums() {
+      return (this.currentNode['__leaves__'] || []).sort((a,b) => a.label.localeCompare(b.label));
+    },
+
+    // ── Filtered data ──
+    filteredTableData() {
+      if (this.selectedAlbum === '') return [];
+
+      return this.tableData.filter(item => {
+        // Album match
+        let matchAlbum = true;
+        if (this.selectedAlbum !== 'All') {
+          const k = (item.metadata && item.metadata.ListType) ? item.metadata.ListType : 'None';
+          if (this.selectedAlbum === 'None') {
+            matchAlbum = (k === 'None');
+          } else {
+            // Support prefix match: selecting a folder key shows all children
+            matchAlbum = (k === this.selectedAlbum) || k.startsWith(this.selectedAlbum + '/');
+          }
+        }
+
+        // Type match
+        let matchType = true;
+        if (this.filterType !== 'all') {
+          const isPhoto = item.name.startsWith('A');
+          if (this.filterType === 'preview') matchType = isPhoto;
+          else if (this.filterType === 'original') matchType = !isPhoto;
+        }
+
+        return matchAlbum && matchType;
+      });
     }
-  })
+  },
+
+  watch: {
+    selectedAlbum(v) {
+      if (v !== '') { this.autoFetchCount = 0; this.$nextTick(() => this.triggerAutoLoad()); }
+    },
+    filterType() {
+      if (this.selectedAlbum !== '') { this.autoFetchCount = 0; this.$nextTick(() => this.triggerAutoLoad()); }
+    }
+  },
+
+  methods: {
+    // ── Album panel ──
+    toggleAlbumPanel() {
+      this.albumPanelOpen = !this.albumPanelOpen;
+    },
+    closePanels() {
+      this.albumPanelOpen = false;
+    },
+    drillDown(folder) {
+      this.panelPath.push(folder);
+    },
+    navigateTo(idx) {
+      if (idx === null) {
+        this.panelPath = [];
+      } else {
+        this.panelPath = this.panelPath.slice(0, idx + 1);
+      }
+    },
+    selectAlbum(key, label) {
+      this.selectedAlbum = key;
+      this.selectedAlbumLabel = label;
+      this.albumPanelOpen = false;
+    },
+    setFilter(f) {
+      this.filterType = f;
+    },
+
+    // ── Count all items under a folder prefix ──
+    getFolderCount(folder) {
+      const prefix = [...this.panelPath, folder].join('/');
+      let count = 0;
+      this.tableData.forEach(item => {
+        const k = (item.metadata && item.metadata.ListType) ? item.metadata.ListType : '';
+        if (k === prefix || k.startsWith(prefix + '/')) count++;
+      });
+      return count || '';
+    },
+
+    // ── Helpers ──
+    isVideo(name) {
+      return /\.(mp4|webm|ogg|mov)$/i.test(name);
+    },
+    previewList(name) {
+      return ['/file/' + name];
+    },
+    getAlbumLabel(item) {
+      const k = (item.metadata && item.metadata.ListType && item.metadata.ListType !== 'None')
+        ? item.metadata.ListType : '未分类';
+      const parts = k.split('/');
+      return parts[parts.length - 1];
+    },
+    getFileName(item) {
+      return (item.metadata && item.metadata.fileName) ? item.metadata.fileName : item.name;
+    },
+
+    // ── Actions ──
+    handleCopy(key) {
+      const text = `${location.origin}/file/${key}`;
+      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+        .catch(() => {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.cssText = 'position:fixed;top:0;clip:rect(0 0 0 0)';
+          document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+        });
+      this.$message({ message: '链接已复制', type: 'success', duration: 1800 });
+    },
+    handleDelete(index, key) {
+      if (!confirm('确认删除该图片？')) return;
+      fetch('./api/manage/delete/' + key, { method: 'GET', credentials: 'include' })
+        .then(() => {
+          const i = this.tableData.findIndex(it => it.name === key);
+          if (i > -1) this.tableData.splice(i, 1);
+          this.$message.success('已删除');
+        })
+        .catch(() => this.$message.error('删除失败'));
+    },
+    handleLogout() {
+      location.href = './api/manage/logout';
+    },
+
+    // ── Data loading ──
+    async loadMore(isInitial = false) {
+      if (this.isLoading) return;
+      if (!isInitial && !this.nextCursor) return;
+
+      this.isLoading = true;
+      let url = './api/manage/list?limit=300';
+      if (!isInitial && this.nextCursor) url += '&cursor=' + encodeURIComponent(this.nextCursor);
+
+      try {
+        const res = await fetch(url, { method: 'GET', credentials: 'include' });
+        if (res.status === 401) { location.href = './api/manage/login'; return; }
+        const data = await res.json();
+        const items = (data.keys || []).map(item => Object.freeze(item));
+        this.tableData.push(...items);
+        this.nextCursor = data.list_complete ? null : data.cursor;
+      } catch {
+        this.$message.error('加载失败，请检查网络');
+      } finally {
+        this.isLoading = false;
+        this.$nextTick(() => this.triggerAutoLoad());
+      }
+    },
+
+    triggerAutoLoad() {
+      if (this.selectedAlbum === '') return;
+      if (this.filteredTableData.length < 15 && this.nextCursor && !this.isLoading && this.autoFetchCount < 5) {
+        this.autoFetchCount++;
+        this.loadMore(false);
+      }
+    }
+  },
+
+  mounted() {
+    fetch('./api/manage/check', { method: 'GET', credentials: 'include' })
+      .then(r => r.text())
+      .then(t => {
+        if (t === 'true') this.showLogoutButton = true;
+        else if (t !== 'Not using basic auth.') location.href = './api/manage/login';
+      });
+
+    // Close panel on outside click
+    document.addEventListener('click', () => { this.albumPanelOpen = false; });
+
+    this.loadMore(true);
+  }
+})
 </script>
+</body>
 </html>
+
