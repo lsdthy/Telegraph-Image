@@ -1355,22 +1355,37 @@ new Vue({
       this.toast('已复制到剪贴板', 'success');
     },
     async handleImportUrls() {
-      let text = this.importUrls.replace(/!\[.*?\]\((https?:\/\/[^)]+)\)/g, '$1');
-      const urls = [...new Set(text.split(/\s+/).filter(u=>/^https?:\/\//i.test(u)))];
-      if (!urls.length) { this.toast('未检测到有效链接', 'error'); return; }
+      // Extract [altText, url] pairs from Markdown image syntax, preserving alt text as filename hint
+      const mdRegex = /!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g;
+      const urlAltMap = new Map();
+      let match;
+      while ((match = mdRegex.exec(this.importUrls)) !== null) {
+        const [, alt, url] = match;
+        if (!urlAltMap.has(url)) urlAltMap.set(url, alt.trim());
+      }
+      // Also collect bare URLs not already captured
+      const bare = this.importUrls.replace(/!\[[^\]]*\]\((https?:\/\/[^)]+)\)/g, '$1');
+      bare.split(/\s+/).filter(u => /^https?:\/\//i.test(u)).forEach(u => {
+        if (!urlAltMap.has(u)) urlAltMap.set(u, '');
+      });
+      const entries = [...urlAltMap.entries()]; // [[url, altText], ...]
+      if (!entries.length) { this.toast('未检测到有效链接', 'error'); return; }
       this.isImporting = true;
       const albumParam = (this.selectedAlbum==='All'||this.selectedAlbum==='None') ? '' : `?album=${encodeURIComponent(this.selectedAlbum)}`;
       const endpoint = `${this.baseURL}/upload${albumParam}`;
       let ok=0, fail=0;
-      for (const url of urls) {
+      for (const [url, altText] of entries) {
         try {
           let blob;
           try { const r=await fetch(url); if(!r.ok) throw 0; blob=await r.blob(); }
           catch { const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url)); blob=await r.blob(); }
-          let fn = url.split('/').pop().split('?')[0]||`import_${Date.now()}`;
+          // Use alt text as filename if present and valid, otherwise fall back to URL path segment
+          let fn = (altText && altText.length > 0 && altText.length <= 128)
+            ? altText
+            : url.split('/').pop().split('?')[0] || `import_${Date.now()}`;
           if (!fn.includes('.')) { const m={'image/jpeg':'jpg','image/png':'png','image/gif':'gif','image/webp':'webp','video/mp4':'mp4'}; fn+='.'+( m[blob.type]||'bin'); }
           const fd = new FormData();
-          fd.append('file', new File([blob],fn,{type:blob.type}));
+          fd.append('file', new File([blob], fn, {type:blob.type}));
           const r = await fetch(endpoint,{method:'POST',body:fd,credentials:'include'});
           const d = await r.json();
           if (r.ok && !d[0]?.error) ok++; else fail++;
@@ -1490,4 +1505,5 @@ new Vue({
 </script>
 </body>
 </html>
+
 
