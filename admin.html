@@ -1,530 +1,599 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>沉浸画廊 · Immersive</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css" crossorigin="anonymous">
-  <style>
-    :root {
-      --bg:         #0a0a0c;
-      --surface:    #111116;
-      --card:       #16161d;
-      --border:     rgba(255,255,255,0.07);
-      --gold:       #c9a84c;
-      --gold-dim:   #8a6f30;
-      --gold-glow:  rgba(201,168,76,0.15);
-      --text:       #e8e4dc;
-      --muted:      #6b6878;
-      --danger:     #c0392b;
-      --font-serif: 'Playfair Display', serif;
-      --font-sans:  'DM Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>沉浸画廊 · Immersive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css" crossorigin="anonymous">
+<style>
+/* ══ TOKENS ══════════════════════════════════════════════════════════════════ */
+:root{
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+  --ease-out:   cubic-bezier(.4,0,.2,1);
+  --sd-w:       248px;
+}
+[data-theme="light"]{
+  --bg:         #f5f1e9; --bg2:#ede8df; --bg3:#e3ddd3;
+  --surface:    #ffffff; --panel:#f0ebe2;
+  --bdr:        rgba(110,85,45,.12); --bdr-h:rgba(110,85,45,.26);
+  --gold:       #8c5e18; --gold-d:#b07830; --gold-x:#c89040;
+  --gold-g:     rgba(140,94,24,.07); --gold-gl:rgba(140,94,24,.15);
+  --text:       #1e1a14; --text2:#5c4a30; --muted:#8a7a68;
+  --hbg:        rgba(245,241,233,.93);
+  --img-rest:   brightness(.94) saturate(.9);
+  --img-hover:  brightness(1.05) saturate(1.1);
+  --danger:     #b83030; --success:#2e7d50;
+}
+[data-theme="dark"]{
+  --bg:         #080809; --bg2:#0e0e12; --bg3:#131318;
+  --surface:    #111116; --panel:#0c0c10;
+  --bdr:        rgba(255,255,255,.06); --bdr-h:rgba(255,255,255,.13);
+  --gold:       #c9a84c; --gold-d:#8a6f30; --gold-x:#e4b85a;
+  --gold-g:     rgba(201,168,76,.09); --gold-gl:rgba(201,168,76,.17);
+  --text:       #e8e4da; --text2:#a09080; --muted:#6a6270;
+  --hbg:        rgba(8,8,9,.92);
+  --img-rest:   brightness(.86) saturate(.87);
+  --img-hover:  brightness(1.06) saturate(1.12);
+  --danger:     #c03030; --success:#37a066;
+}
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;scroll-behavior:smooth}
+body{
+  min-height:100%;background:var(--bg);color:var(--text);
+  font-family:'DM Sans','PingFang SC','Microsoft YaHei',sans-serif;
+  font-size:14px;overflow-x:hidden;transition:background .3s,color .3s;
+}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bdr-h);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--gold-d)}
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-sans);
-      min-height: 100vh;
-    }
+/* ── Progress bar ─────────────────────────────────────────────────────────── */
+.pbar{
+  position:fixed;top:0;left:0;height:2px;z-index:9999;
+  width:0;opacity:0;border-radius:0 2px 2px 0;
+  background:linear-gradient(90deg,var(--gold-d),var(--gold-x),var(--gold-d));
+  background-size:200%;transition:opacity .2s;
+}
+.pbar.on{opacity:1;animation:pbsw 1.7s ease-in-out infinite}
+@keyframes pbsw{0%{width:0;background-position:0%}55%{width:72%;background-position:100%}100%{width:96%;background-position:0%}}
 
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 99px; }
+#app{display:flex;flex-direction:column;min-height:100vh}
 
-    /* ══ HEADER ══ */
-    .header-bar {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(10,10,12,0.9);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border-bottom: 1px solid var(--border);
-      padding: 0 28px;
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      height: 60px;
-    }
+/* ══ HEADER ══════════════════════════════════════════════════════════════════ */
+.hd{
+  position:sticky;top:0;z-index:300;height:54px;flex-shrink:0;
+  background:var(--hbg);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+  border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;gap:10px;padding:0 16px;
+  transition:background .3s,border-color .3s;
+}
 
-    .logo {
-      font-family: var(--font-serif);
-      font-size: 18px;
-      color: var(--gold);
-      letter-spacing: 0.05em;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
+.logo{
+  font-family:'Playfair Display',Georgia,serif;font-size:16px;font-style:italic;
+  color:var(--gold);letter-spacing:.02em;white-space:nowrap;user-select:none;flex-shrink:0;
+}
 
-    /* ── Album trigger ── */
-    .album-trigger {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      padding: 7px 13px;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      min-width: 210px;
-      position: relative;
-      user-select: none;
-    }
-    .album-trigger:hover { border-color: var(--gold-dim); }
-    .album-trigger.active { border-color: var(--gold); }
+/* Hamburger */
+.hbg-btn{
+  width:32px;height:32px;border-radius:7px;border:1px solid var(--bdr);
+  background:transparent;color:var(--muted);cursor:pointer;flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3.5px;
+  transition:all .2s;
+}
+.hbg-btn:hover{border-color:var(--gold-d);color:var(--gold);background:var(--gold-g)}
+.hbg-btn .hb{display:block;height:1.5px;background:currentColor;border-radius:99px;transition:all .25s;transform-origin:center}
+.hbg-btn .hb:nth-child(1){width:12px}.hbg-btn .hb:nth-child(2){width:8px}.hbg-btn .hb:nth-child(3){width:12px}
+.sdopen .hbg-btn .hb:nth-child(1){transform:translateY(5px) rotate(45deg);width:12px}
+.sdopen .hbg-btn .hb:nth-child(2){opacity:0;transform:scaleX(0)}
+.sdopen .hbg-btn .hb:nth-child(3){transform:translateY(-5px) rotate(-45deg);width:12px}
 
-    .album-trigger-label {
-      flex: 1; font-size: 12.5px; color: var(--text);
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .album-trigger-label.placeholder { color: var(--muted); }
-    .album-trigger-icon { color: var(--muted); font-size: 10px; transition: transform 0.2s; }
-    .album-trigger.active .album-trigger-icon { transform: rotate(180deg); color: var(--gold); }
+.hdiv{width:1px;height:18px;background:var(--bdr);flex-shrink:0}
 
-    /* ── Panel ── */
-    .album-panel {
-      position: absolute;
-      top: calc(100% + 8px);
-      left: 0;
-      width: 300px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 11px;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.7);
-      z-index: 300;
-      overflow: hidden;
-      animation: panelIn 0.16s ease;
-    }
-    @keyframes panelIn {
-      from { opacity: 0; transform: translateY(-6px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+/* Breadcrumb */
+.bc{display:flex;align-items:center;gap:2px;flex:1;min-width:0;overflow:hidden}
+.bcs{font-size:12px;color:var(--muted);white-space:nowrap;padding:3px 6px;border-radius:5px;cursor:pointer;transition:all .15s;flex-shrink:0}
+.bcs:hover{color:var(--gold);background:var(--gold-g)}
+.bcs.lf{color:var(--text);font-weight:500;cursor:default;flex-shrink:1;overflow:hidden;text-overflow:ellipsis}
+.bcs.lf:hover{background:transparent;color:var(--text)}
+.bca{color:var(--bdr-h);font-size:10px;flex-shrink:0}
 
-    .album-breadcrumb {
-      display: flex; align-items: center; gap: 4px;
-      padding: 11px 14px 8px; border-bottom: 1px solid var(--border); flex-wrap: wrap;
-    }
-    .crumb-item {
-      font-size: 11px; color: var(--muted); cursor: pointer;
-      padding: 2px 4px; border-radius: 4px; transition: color 0.15s;
-    }
-    .crumb-item:hover { color: var(--gold); }
-    .crumb-item.current { color: var(--text); cursor: default; }
-    .crumb-sep { color: var(--border); font-size: 9px; }
+.hcnt{font-size:11px;color:var(--gold);background:var(--gold-g);border:1px solid var(--gold-gl);padding:2px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0}
 
-    .album-list { max-height: 300px; overflow-y: auto; padding: 5px 0; }
+/* Pills */
+.pills{display:flex;gap:3px;flex-shrink:0}
+.pill{padding:4px 11px;border-radius:99px;font-size:11.5px;font-weight:500;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--muted);transition:all .18s;white-space:nowrap;font-family:inherit}
+.pill:hover{border-color:var(--gold-d);color:var(--text)}
+.pill.on{background:var(--gold);border-color:var(--gold);color:#fff;font-weight:600}
 
-    .album-row {
-      display: flex; align-items: center; gap: 9px;
-      padding: 8px 14px; cursor: pointer;
-      transition: background 0.15s; font-size: 12.5px; color: var(--text);
-    }
-    .album-row:hover { background: var(--card); }
-    .album-row.selected { background: var(--gold-glow); color: var(--gold); }
-    .album-row-icon { font-size: 13px; flex-shrink: 0; }
-    .album-row-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .album-row-count { font-size: 10px; color: var(--muted); flex-shrink: 0; }
-    .album-row-arrow { font-size: 10px; color: var(--muted); flex-shrink: 0; }
-    .album-divider { height: 1px; background: var(--border); margin: 3px 0; }
+/* Column picker (shown only when sidebar is hidden in immersive) */
+.cpk{display:flex;gap:2px;flex-shrink:0}
+.cpbtn{width:25px;height:25px;border-radius:5px;border:1px solid var(--bdr);background:transparent;
+  color:var(--muted);cursor:pointer;font-size:10.5px;font-weight:600;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;transition:all .15s}
+.cpbtn:hover{border-color:var(--gold-d);color:var(--text)}
+.cpbtn.on{background:var(--gold-g);border-color:var(--gold);color:var(--gold)}
 
-    /* ── Filter pills ── */
-    .filter-pills { display: flex; gap: 5px; }
-    .pill {
-      padding: 5px 13px; border-radius: 99px; font-size: 11.5px; font-weight: 500;
-      cursor: pointer; border: 1px solid var(--border); background: transparent;
-      color: var(--muted); transition: all 0.2s; letter-spacing: 0.02em; font-family: var(--font-sans);
-    }
-    .pill:hover { border-color: var(--gold-dim); color: var(--text); }
-    .pill.active { background: var(--gold); border-color: var(--gold); color: #0a0a0c; font-weight: 700; }
+/* Theme toggle */
+.theme-btn{
+  width:32px;height:32px;border-radius:7px;border:1px solid var(--bdr);background:transparent;
+  color:var(--muted);cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  transition:all .2s;overflow:hidden;position:relative;
+}
+.theme-btn:hover{border-color:var(--gold-d);color:var(--gold);background:var(--gold-g)}
+.theme-icon{transition:transform .38s var(--ease-spring),opacity .25s;position:absolute}
+.theme-icon.sun{transform:rotate(0deg) scale(1)}
+.theme-icon.moon{transform:rotate(-90deg) scale(0);opacity:0}
+[data-theme="light"] .theme-icon.sun{transform:rotate(90deg) scale(0);opacity:0}
+[data-theme="light"] .theme-icon.moon{transform:rotate(0deg) scale(1);opacity:1}
 
-    /* ── Nav links ── */
-    .nav-links { display: flex; gap: 5px; margin-left: auto; }
-    .nav-link {
-      padding: 5px 12px; border-radius: 6px; font-size: 11.5px;
-      text-decoration: none; color: var(--muted); border: 1px solid var(--border);
-      background: transparent; transition: all 0.2s; cursor: pointer; white-space: nowrap;
-      font-family: var(--font-sans);
-    }
-    .nav-link:hover { color: var(--text); border-color: var(--gold-dim); }
-    .nav-link.current { color: var(--gold); border-color: var(--gold-dim); }
+/* Icon btn generic */
+.ibtn{width:32px;height:32px;border-radius:7px;border:1px solid var(--bdr);background:transparent;color:var(--muted);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .18s}
+.ibtn:hover{border-color:var(--gold-d);color:var(--gold);background:var(--gold-g)}
 
-    /* ══ EMPTY STATE ══ */
-    .empty-state {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      min-height: calc(100vh - 60px); padding: 60px 20px; text-align: center;
-      animation: fadeIn 0.5s ease;
-    }
-    .empty-icon {
-      width: 72px; height: 72px; border: 1px solid var(--border); border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 28px; color: var(--muted); margin-bottom: 22px; background: var(--surface);
-    }
-    .empty-state h2 {
-      font-family: var(--font-serif); font-size: 24px; color: var(--text);
-      font-weight: 400; margin-bottom: 8px;
-    }
-    .empty-state p { color: var(--muted); font-size: 13px; line-height: 1.8; }
+/* Nav */
+.nav{display:flex;gap:3px;flex-shrink:0}
+.nav a,.nav button{padding:4px 10px;border-radius:6px;font-size:11.5px;text-decoration:none;color:var(--muted);border:1px solid var(--bdr);background:transparent;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .18s;letter-spacing:.02em}
+.nav a:hover,.nav button:hover{color:var(--text);border-color:var(--gold-d)}
+.nav a.cur{color:var(--gold);border-color:var(--gold-d);background:var(--gold-g);font-weight:500}
 
-    /* ══ SEAMLESS IMMERSIVE WATERFALL ══ */
-    .waterfall-container {
-      column-count: 5;
-      column-gap: 0;
-      padding: 0;
-      width: 100%;
-      font-size: 0;
-      line-height: 0;
-    }
+/* ══ BODY ════════════════════════════════════════════════════════════════════ */
+.body{display:flex;flex:1;min-height:calc(100vh - 54px);position:relative}
 
-    .waterfall-item {
-      break-inside: avoid;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      cursor: pointer;
-      position: relative;
-      display: block;
-      width: 100%;
-      /* subtle initial dim for the mosaic effect */
-      filter: brightness(0.88) saturate(0.9);
-      transition: filter 0.4s ease, z-index 0s;
-      animation: itemReveal 0.5s ease both;
-    }
-    @keyframes itemReveal {
-      from { opacity: 0; filter: brightness(0.5) saturate(0); }
-      to   { opacity: 1; filter: brightness(0.88) saturate(0.9); }
-    }
+/* ══ SIDEBAR — slides over content ══════════════════════════════════════════ */
+.sd{
+  position:absolute;top:0;left:0;bottom:0;z-index:200;
+  width:var(--sd-w);
+  background:var(--panel);border-right:1px solid var(--bdr);
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:4px 0 24px rgba(0,0,0,.28);
+  transition:transform .28s var(--ease-out),opacity .22s ease;
+  /* Light mode: softer shadow */
+}
+[data-theme="light"] .sd{box-shadow:4px 0 20px rgba(80,60,20,.12)}
+.sd.closed{transform:translateX(-100%);opacity:0;pointer-events:none}
 
-    .waterfall-item:hover {
-      filter: brightness(1.05) saturate(1.1);
-      z-index: 3;
-    }
+.sdi{width:var(--sd-w);display:flex;flex-direction:column;height:100%}
 
-    .waterfall-item .el-image,
-    .waterfall-item video {
-      width: 100% !important;
-      display: block !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: none !important;
-      vertical-align: middle !important;
-    }
-    .el-image__inner { vertical-align: middle !important; display: block !important; }
+/* Sidebar header */
+.sdh{padding:12px 13px 9px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+.sdh-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.sdlbl{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sd-close-btn{
+  width:22px;height:22px;border-radius:5px;border:1px solid var(--bdr);background:transparent;
+  color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;
+  transition:all .15s;
+}
+.sd-close-btn:hover{background:var(--gold-g);color:var(--gold);border-color:var(--gold-d)}
 
-    /* Hover overlay for immersive mode */
-    .item-overlay {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%);
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      padding: 12px 10px 10px;
-    }
-    .waterfall-item:hover .item-overlay { opacity: 1; }
+/* Album search */
+.sd-search{position:relative}
+.sd-search input{
+  width:100%;height:28px;padding:0 8px 0 27px;
+  border:1px solid var(--bdr);border-radius:6px;
+  background:var(--bg2);color:var(--text);font-family:inherit;font-size:12px;
+  outline:none;transition:border-color .18s,background .18s;
+}
+.sd-search input::placeholder{color:var(--muted)}
+.sd-search input:focus{border-color:var(--gold-d);background:var(--surface)}
+.sd-search-ico{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:11px;pointer-events:none}
 
-    .overlay-album {
-      font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--gold); margin-bottom: 3px; font-weight: 500;
-    }
-    .overlay-name {
-      font-size: 10px; color: rgba(255,255,255,0.65);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 8px;
-    }
-    .overlay-actions { display: flex; gap: 5px; }
-    .overlay-btn {
-      width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 11px;
-      transition: transform 0.15s, background 0.15s;
-      background: rgba(255,255,255,0.12); backdrop-filter: blur(4px); color: #fff;
-    }
-    .overlay-btn:hover { transform: scale(1.18); background: rgba(255,255,255,0.22); }
-    .overlay-btn.copy:hover { background: var(--gold); color: #0a0a0c; }
-    .overlay-btn.danger:hover { background: var(--danger); }
+.sdscr{flex:1;overflow-y:auto;padding:6px 0 24px}
+::-webkit-scrollbar{width:3px}
 
-    /* ── Load more ── */
-    .load-area { text-align: center; padding: 28px 0 50px; }
-    .load-btn {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 11px 28px; background: transparent;
-      border: 1px solid var(--gold-dim); border-radius: 99px;
-      color: var(--gold); font-size: 12px; font-family: var(--font-sans);
-      cursor: pointer; transition: all 0.25s; letter-spacing: 0.04em;
-    }
-    .load-btn:hover { background: var(--gold-glow); border-color: var(--gold); }
-    .load-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .load-end { color: var(--muted); font-size: 12px; letter-spacing: 0.06em; }
-    .load-end::before { content: '— '; }
-    .load-end::after { content: ' —'; }
+/* Tree rows */
+.trow{display:flex;align-items:center;height:30px;gap:4px;padding:0 8px;border-radius:6px;margin:1px 5px;cursor:pointer;transition:background .13s;position:relative}
+.trow:hover{background:var(--gold-g)}
+.trow.act{background:var(--gold-g)}
+.trow.act .tn{color:var(--gold);font-weight:500}
+.trow.act::before{content:'';position:absolute;left:-5px;top:5px;bottom:5px;width:3px;background:var(--gold);border-radius:0 3px 3px 0}
+.trow.anc::before{content:'';position:absolute;left:-5px;top:5px;bottom:5px;width:3px;background:var(--gold-d);opacity:.4;border-radius:0 3px 3px 0}
+.tchv{width:13px;height:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--muted);transition:transform .18s var(--ease-out),color .15s}
+.tchv.open{transform:rotate(90deg);color:var(--gold)}
+.tchv.blank{opacity:0;pointer-events:none}
+.tico{font-size:12px;flex-shrink:0;transition:color .15s}
+.tico.fold{color:var(--gold-d)}.tico.leaf{color:var(--muted)}
+.trow.act .tico,.trow.anc .tico{color:var(--gold)}
+.tn{flex:1;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc{font-size:9.5px;color:var(--muted);background:var(--bdr);padding:1px 5px;border-radius:99px;flex-shrink:0}
+.trow.act .tc{background:var(--gold-gl);color:var(--gold)}
+.tdiv{height:1px;background:var(--bdr);margin:5px 10px}
+.tsec{padding:9px 13px 4px;font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sd-nomatch{padding:20px 14px;text-align:center;font-size:12px;color:var(--muted);line-height:1.6}
 
-    .spinner {
-      width: 12px; height: 12px;
-      border: 2px solid var(--gold-dim); border-top-color: var(--gold);
-      border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+/* Mobile overlay mask */
+.mobmask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;backdrop-filter:blur(2px)}
+.mobmask.show{display:block}
 
-    @media (max-width: 1400px) { .waterfall-container { column-count: 4; } }
-    @media (max-width: 1024px) { .waterfall-container { column-count: 3; } }
-    @media (max-width: 768px) {
-      .waterfall-container { column-count: 2; }
-      .header-bar { padding: 0 14px; flex-wrap: wrap; height: auto; min-height: 60px; padding-top: 10px; padding-bottom: 10px; }
-      .nav-links { display: none; }
-    }
-    @media (max-width: 480px) { .waterfall-container { column-count: 1; } }
+/* ══ MOSAIC CANVAS ═══════════════════════════════════════════════════════════ */
+.canvas{flex:1;overflow-y:auto;position:relative}
+.mosaic{
+  column-gap:0;padding:0;width:100%;
+  font-size:0;line-height:0;
+  animation:fadeup .35s ease;
+}
+.mosaic[data-cols="2"]{column-count:2}
+.mosaic[data-cols="3"]{column-count:3}
+.mosaic[data-cols="4"]{column-count:4}
+.mosaic[data-cols="5"]{column-count:5}
+.mosaic[data-cols="6"]{column-count:6}
 
-    .el-image__error { background: var(--card); color: var(--muted); min-height: 60px; }
-  </style>
+/* Tile */
+.tile{
+  break-inside:avoid;overflow:hidden;cursor:pointer;
+  position:relative;display:block;width:100%;
+  filter:var(--img-rest);
+  transition:filter .4s ease,z-index 0s;
+  animation:tilein .55s ease both;
+}
+@keyframes tilein{from{opacity:0;filter:brightness(.3) saturate(0)}to{opacity:1;filter:var(--img-rest)}}
+.tile:hover{filter:var(--img-hover);z-index:10}
+
+.tile .el-image,.tile video{width:100% !important;display:block !important;border:none !important;vertical-align:middle !important;margin:0 !important;padding:0 !important}
+.el-image__inner{vertical-align:middle !important;display:block !important}
+.el-image__error{background:var(--bg2) !important;color:var(--muted) !important;min-height:60px}
+
+/* Hover overlay */
+.tov{
+  position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,.12) 46%,transparent 64%);
+  opacity:0;transition:opacity .3s ease;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:12px 10px 10px;
+}
+.tile:hover .tov{opacity:1}
+[data-theme="light"] .tov{background:linear-gradient(to top,rgba(8,5,0,.8) 0%,rgba(8,5,0,.1) 48%,transparent 66%)}
+.tova{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-x);margin-bottom:3px;font-weight:600}
+.tovn{font-size:10px;color:rgba(255,255,255,.68);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px}
+.tovbs{display:flex;gap:5px}
+.tovb{
+  width:26px;height:26px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:12px;
+  background:rgba(255,255,255,.13);backdrop-filter:blur(8px);color:#fff;
+  transition:transform .17s var(--ease-spring),background .17s;
+}
+.tovb:hover{transform:scale(1.2)}
+.tovb.c:hover{background:var(--gold);color:#04030a}
+.tovb.d:hover{background:var(--danger)}
+
+/* ══ EMPTY STATE ════════════════════════════════════════════════════════════ */
+.empty{
+  flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:80px 24px;text-align:center;animation:fadeup .5s ease;
+}
+.e-ring{
+  width:80px;height:80px;border-radius:50%;border:1px solid var(--bdr);background:var(--surface);
+  display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted);
+  margin-bottom:22px;position:relative;
+}
+.e-ring::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:1px dashed var(--gold-d);opacity:.25;animation:spin-slow 14s linear infinite}
+.empty h2{font-family:'Playfair Display',serif;font-weight:400;font-size:21px;color:var(--text);margin-bottom:9px}
+.empty p{color:var(--muted);font-size:13px;line-height:1.8;max-width:300px}
+.etip{margin-top:20px;padding:9px 17px;border-radius:8px;border:1px solid var(--bdr);background:var(--surface);font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:8px}
+
+/* Load more */
+.lz{text-align:center;padding:28px 0 50px}
+.lbtn{display:inline-flex;align-items:center;gap:9px;padding:10px 28px;border:1px solid var(--gold-d);border-radius:99px;background:transparent;color:var(--gold);font-size:12.5px;font-family:inherit;cursor:pointer;transition:all .22s;letter-spacing:.04em}
+.lbtn:hover{background:var(--gold-g);border-color:var(--gold)}
+.lbtn:disabled{opacity:.4;cursor:not-allowed}
+.lend{color:var(--muted);font-size:12px;letter-spacing:.08em}
+.lend::before{content:'— '}.lend::after{content:' —'}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--gold-d);border-top-color:var(--gold);border-radius:50%;animation:rot .65s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes spin-slow{to{transform:rotate(360deg)}}
+
+/* Sidebar pushes canvas on large screens */
+@media(min-width:1000px){
+  .body.sdopen .canvas{margin-left:var(--sd-w);transition:margin-left .28s var(--ease-out)}
+  .body .canvas{margin-left:0;transition:margin-left .28s var(--ease-out)}
+}
+@media(max-width:999px){.nav{display:none}}
+@media(max-width:640px){.hd{padding:0 12px;gap:7px}.hcnt{display:none}.cpk{display:none}}
+@media(max-width:480px){.mosaic{column-count:2 !important}.pills{display:none}}
+@media(max-width:1400px){.mosaic[data-cols="6"]{column-count:5}}
+@media(max-width:1100px){.mosaic[data-cols="5"],.mosaic[data-cols="6"]{column-count:4}}
+@media(max-width:900px) {.mosaic[data-cols="4"],.mosaic[data-cols="5"],.mosaic[data-cols="6"]{column-count:3}}
+@media(max-width:680px) {.mosaic{column-count:2 !important}}
+</style>
 </head>
 <body>
-<div id="app">
+<div id="app" :class="{sdopen:sdOpen}">
+  <div class="pbar" :class="{on:loading}"></div>
 
-  <!-- ══ HEADER ══ -->
-  <div class="header-bar">
-    <div class="logo">沉浸画廊</div>
+  <header class="hd">
+    <div class="logo">Immersive</div>
 
-    <div style="position: relative;">
-      <div class="album-trigger" :class="{ active: albumPanelOpen }" @click.stop="toggleAlbumPanel">
-        <span style="font-size:13px; color: var(--muted);">▤</span>
-        <span class="album-trigger-label" :class="{ placeholder: !selectedAlbumLabel }">
-          {{ selectedAlbumLabel || '选择相册 / 目录' }}
-        </span>
-        <span class="album-trigger-icon">▾</span>
-      </div>
+    <button class="hbg-btn" @click.stop="sdOpen=!sdOpen" :title="sdOpen?'隐藏目录':'显示目录'">
+      <span class="hb"></span><span class="hb"></span><span class="hb"></span>
+    </button>
+    <div class="hdiv"></div>
 
-      <div class="album-panel" v-if="albumPanelOpen" @click.stop>
-        <div class="album-breadcrumb">
-          <span class="crumb-item" @click="navigateTo(null)">根目录</span>
-          <template v-for="(crumb, ci) in panelPath">
-            <span class="crumb-sep">›</span>
-            <span class="crumb-item" :class="{ current: ci === panelPath.length-1 }"
-                  @click="navigateTo(ci)">{{ crumb }}</span>
+    <!-- Breadcrumb -->
+    <div class="bc">
+      <span class="bcs" @click="pick('All')">Gallery</span>
+      <template v-if="sel&&sel!=='All'">
+        <span class="bca">›</span>
+        <template v-for="(s,i) in selSegs">
+          <span class="bcs" :class="{lf:i===selSegs.length-1}"
+                @click="i<selSegs.length-1&&pick(selSegs.slice(0,i+1).join('/'))">{{s}}</span>
+          <span class="bca" v-if="i<selSegs.length-1">›</span>
+        </template>
+      </template>
+      <span class="bcs lf" v-else-if="sel==='All'">全览</span>
+      <span class="bcs lf" v-else-if="sel==='None'">未分类</span>
+    </div>
+
+    <span class="hcnt" v-if="sel">{{filtered.length}} 项</span>
+    <div class="hdiv"></div>
+
+    <!-- Quality pills -->
+    <div class="pills">
+      <button class="pill" :class="{on:ft==='all'}"      @click="ft='all'">全部</button>
+      <button class="pill" :class="{on:ft==='original'}" @click="ft='original'">原图</button>
+      <button class="pill" :class="{on:ft==='preview'}"  @click="ft='preview'">预览</button>
+    </div>
+
+    <!-- Column picker -->
+    <div class="cpk">
+      <button class="cpbtn" v-for="n in [3,4,5,6]" :key="n" :class="{on:cols===n}" @click="setCols(n)">{{n}}</button>
+    </div>
+
+    <!-- Theme toggle -->
+    <button class="theme-btn" @click="toggleTheme" :title="dark?'切换日间模式':'切换夜间模式'">
+      <span class="theme-icon sun">☀</span>
+      <span class="theme-icon moon">☽</span>
+    </button>
+
+    <!-- Nav -->
+    <div class="nav">
+      <a href="./admin.html">列表</a>
+      <a href="./admin-imgtc.html">管理</a>
+      <a href="./admin-waterfall.html">瀑布</a>
+      <a href="./admin-immersive.html" class="cur">沉浸</a>
+      <button v-if="showOut" @click="location.href='./api/manage/logout'">退出</button>
+    </div>
+  </header>
+
+  <div class="body" :class="{sdopen:sdOpen&&!isMob}">
+    <div class="mobmask" :class="{show:sdOpen&&isMob}" @click="sdOpen=false"></div>
+
+    <!-- ══ SIDEBAR ══ -->
+    <aside class="sd" :class="{closed:!sdOpen}">
+      <div class="sdi">
+        <div class="sdh">
+          <div class="sdh-top">
+            <span class="sdlbl">相册目录</span>
+            <button class="sd-close-btn" @click="sdOpen=false" title="收起">✕</button>
+          </div>
+          <div class="sd-search">
+            <span class="sd-search-ico">⌕</span>
+            <input v-model="sdQ" placeholder="搜索相册…">
+          </div>
+        </div>
+        <div class="sdscr">
+          <template v-if="!sdQ.trim()">
+            <div class="trow" :class="{act:sel==='All'}" @click="pick('All')">
+              <span class="tchv blank">›</span><span class="tico leaf">✦</span>
+              <span class="tn">全部文件</span><span class="tc">{{data.length}}</span>
+            </div>
+            <div class="trow" :class="{act:sel==='None'}" @click="pick('None')">
+              <span class="tchv blank">›</span><span class="tico leaf">○</span>
+              <span class="tn">未分类</span>
+              <span class="tc" v-if="uncnt">{{uncnt}}</span>
+            </div>
+            <div class="tdiv"></div>
+            <div class="tsec">自定义相册</div>
+          </template>
+
+          <!-- Search results -->
+          <template v-if="sdQ.trim()">
+            <div v-if="!sdResults.length" class="sd-nomatch">
+              未找到「{{sdQ}}」<br>
+              <span style="font-size:11px;display:block;margin-top:4px">请尝试其他关键字</span>
+            </div>
+            <div class="trow" v-for="k in sdResults" :key="k" :class="{act:sel===k}" @click="pick(k)">
+              <span class="tchv blank">›</span><span class="tico leaf">◈</span>
+              <span class="tn" :title="k">{{k}}</span>
+              <span class="tc">{{cnts[k]||0}}</span>
+            </div>
+          </template>
+
+          <!-- Tree -->
+          <template v-else>
+            <tree-node v-for="(node,key) in forest" :key="key"
+                       :nk="key" :node="node" :depth="0" :sel="sel"
+                       @pick="pick($event)"></tree-node>
+            <div v-if="!Object.keys(forest).length"
+                 style="padding:14px;font-size:12px;color:var(--muted);text-align:center">
+              {{loading?'加载中…':'暂无相册'}}
+            </div>
           </template>
         </div>
-        <div class="album-list">
-          <div class="album-row" v-if="panelPath.length === 0"
-               :class="{ selected: selectedAlbum === 'All' }"
-               @click="selectAlbum('All', '全览 · All')">
-            <span class="album-row-icon">✦</span>
-            <span class="album-row-name">所有相册（全览）</span>
-          </div>
-          <div class="album-row" v-if="panelPath.length === 0"
-               :class="{ selected: selectedAlbum === 'None' }"
-               @click="selectAlbum('None', '未分类')">
-            <span class="album-row-icon">○</span>
-            <span class="album-row-name">未分类</span>
-          </div>
-          <div class="album-divider" v-if="panelPath.length === 0"></div>
+      </div>
+    </aside>
 
-          <div class="album-row" v-for="folder in currentFolders" :key="'f-'+folder"
-               @click="drillDown(folder)">
-            <span class="album-row-icon">▤</span>
-            <span class="album-row-name">{{ folder }}</span>
-            <span class="album-row-count">{{ getFolderCount(folder) }}</span>
-            <span class="album-row-arrow">›</span>
-          </div>
+    <!-- ══ CANVAS ══ -->
+    <div class="canvas">
+      <!-- No selection -->
+      <div class="empty" v-if="!sel" style="min-height:calc(100vh - 54px)">
+        <div class="e-ring">◈</div>
+        <h2>沉浸式无缝画廊</h2>
+        <p>从左侧目录选择相册<br>支持多级目录，父目录包含全部子级内容</p>
+        <div class="etip">💡 图片边缘零间距排列，悬停后显示操作按钮</div>
+      </div>
 
-          <div class="album-row" v-for="album in currentLeafAlbums" :key="'a-'+album.key"
-               :class="{ selected: selectedAlbum === album.key }"
-               @click="selectAlbum(album.key, album.label)">
-            <span class="album-row-icon" style="color:var(--gold);">◈</span>
-            <span class="album-row-name">{{ album.label }}</span>
-            <span class="album-row-count">{{ albumCounts[album.key] || 0 }}</span>
-          </div>
+      <!-- No results -->
+      <div class="empty" v-else-if="!filtered.length&&!loading" style="min-height:calc(100vh - 54px)">
+        <div class="e-ring" style="font-size:24px">◫</div>
+        <h2>当前相册暂无内容</h2>
+        <p>此筛选条件下没有匹配文件</p>
+      </div>
 
-          <div class="album-row" v-if="currentFolders.length === 0 && currentLeafAlbums.length === 0 && panelPath.length > 0"
-               style="color:var(--muted);cursor:default;">
-            <span class="album-row-icon">—</span>
-            <span class="album-row-name">此目录下暂无相册</span>
+      <!-- Mosaic -->
+      <div class="mosaic" :data-cols="cols" v-if="filtered.length">
+        <div class="tile" v-for="(item,idx) in filtered" :key="item.name"
+             :style="{animationDelay:(idx%30*22)+'ms'}">
+          <video v-if="isVid(item.name)" controls preload="none" style="width:100%;display:block">
+            <source :src="'/file/'+item.name" type="video/mp4">
+          </video>
+          <el-image v-else :src="'/file/'+item.name" :preview-src-list="['/file/'+item.name]" lazy></el-image>
+          <div class="tov">
+            <div class="tova">{{aLabel(item)}}</div>
+            <div class="tovn">{{fName(item)}}</div>
+            <div class="tovbs">
+              <button class="tovb c" @click.stop="doCopy(item.name)" title="复制链接">⎘</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="filter-pills">
-      <button class="pill" :class="{ active: filterType==='all' }"      @click="filterType='all'">全部</button>
-      <button class="pill" :class="{ active: filterType==='original' }" @click="filterType='original'">原图</button>
-      <button class="pill" :class="{ active: filterType==='preview' }"  @click="filterType='preview'">预览</button>
-    </div>
-
-    <div class="nav-links">
-      <a href="./admin.html"          class="nav-link">列表</a>
-      <a href="./admin-imgtc.html"    class="nav-link">网格</a>
-      <a href="./admin-waterfall.html" class="nav-link">瀑布流</a>
-      <a href="./admin-immersive.html" class="nav-link current">沉浸</a>
-      <button class="nav-link" v-if="showLogoutButton" @click="handleLogout">退出</button>
-    </div>
-  </div>
-
-  <!-- ══ EMPTY STATE ══ -->
-  <div class="empty-state" v-if="selectedAlbum === ''">
-    <div class="empty-icon">◈</div>
-    <h2>沉浸式无缝画廊</h2>
-    <p>在上方选择相册，开启全屏沉浸体验<br>支持多级目录导航</p>
-  </div>
-
-  <!-- ══ SEAMLESS WATERFALL ══ -->
-  <div class="waterfall-container" v-else>
-    <div class="waterfall-item" v-for="(item, index) in filteredTableData" :key="item.name"
-         :style="{ animationDelay: (index % 30 * 25) + 'ms' }">
-      <video v-if="isVideo(item.name)" controls preload="none">
-        <source :src="'/file/'+item.name" type="video/mp4">
-      </video>
-      <el-image v-else :src="'/file/'+item.name" :preview-src-list="['/file/'+item.name]" lazy></el-image>
-
-      <div class="item-overlay">
-        <div class="overlay-album">{{ getAlbumLabel(item) }}</div>
-        <div class="overlay-name">{{ getFileName(item) }}</div>
-        <div class="overlay-actions">
-          <button class="overlay-btn copy"   @click.stop="handleCopy(item.name)" title="复制链接">⎘</button>
-        </div>
+      <!-- Load more -->
+      <div class="lz" v-if="sel">
+        <button class="lbtn" v-if="cursor" @click="loadMore(false)" :disabled="loading">
+          <span class="spin" v-if="loading"></span>
+          <span>{{loading?'加载中…':'加载更多'}}</span>
+        </button>
+        <span class="lend" v-else-if="filtered.length">已加载全部内容</span>
       </div>
     </div>
   </div>
-
-  <!-- ══ LOAD MORE ══ -->
-  <div class="load-area" v-if="selectedAlbum !== ''">
-    <button class="load-btn" v-if="nextCursor" @click="loadMore(false)" :disabled="isLoading">
-      <span class="spinner" v-if="isLoading"></span>
-      <span>{{ isLoading ? '正在加载…' : '加载更多' }}</span>
-    </button>
-    <span class="load-end" v-else>已加载全部内容</span>
-  </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js" crossorigin="anonymous"></script>
 <script>
-new Vue({
-  el: '#app',
-  data: {
-    selectedAlbum: '', selectedAlbumLabel: '', filterType: 'all',
-    showLogoutButton: false, tableData: [], nextCursor: null,
-    isLoading: false, autoFetchCount: 0,
-    albumPanelOpen: false, panelPath: [],
+Vue.component('tree-node',{
+  name:'tree-node',
+  props:['nk','node','depth','sel'],
+  data(){return{open:false}},
+  created(){if(this.match)this.open=true},
+  watch:{sel(){if(this.match&&!this.open)this.open=true}},
+  computed:{
+    hasK(){return!!Object.keys(this.node.kids||{}).length},
+    isAct(){return this.sel===this.node.fk},
+    isAnc(){return this.sel&&this.sel!==this.node.fk&&this.sel.startsWith(this.node.fk+'/')},
+    match(){return this.isAct||this.isAnc},
+    sk(){return Object.keys(this.node.kids||{}).sort((a,b)=>a.localeCompare(b))}
   },
-  computed: {
-    uniqueAlbumKeys() {
-      const s = new Set();
-      this.tableData.forEach(i => { if (i.metadata?.ListType && i.metadata.ListType !== 'None') s.add(i.metadata.ListType); });
-      return Array.from(s);
-    },
-    albumCounts() {
-      const c = {};
-      this.tableData.forEach(i => { const k = i.metadata?.ListType || 'None'; c[k] = (c[k]||0)+1; });
-      return c;
-    },
-    albumTree() {
-      const tree = {};
-      this.uniqueAlbumKeys.forEach(key => {
-        const parts = key.split('/');
-        let node = tree;
-        parts.forEach((p, i) => {
-          if (i === parts.length-1) { (node['__leaves__'] = node['__leaves__']||[]).push({ key, label: p }); }
-          else { node = (node[p] = node[p]||{}); }
+  methods:{
+    click(e){e.stopPropagation();this.$emit('pick',this.node.fk);if(this.hasK)this.open=!this.open}
+  },
+  template:`<div>
+    <div class="trow" :class="{act:isAct,anc:isAnc}" :style="{paddingLeft:(8+depth*14)+'px'}" @click="click">
+      <span class="tchv" :class="{open:open&&hasK,blank:!hasK}">›</span>
+      <span class="tico" :class="hasK?'fold':'leaf'">{{hasK?(open?'▾':'▸'):'◈'}}</span>
+      <span class="tn" :title="nk">{{nk}}</span>
+      <span class="tc" v-if="node.tot">{{node.tot}}</span>
+    </div>
+    <div v-show="open&&hasK" style="overflow:hidden">
+      <tree-node v-for="k in sk" :key="k" :nk="k" :node="node.kids[k]" :depth="depth+1" :sel="sel" @pick="$emit('pick',$event)"></tree-node>
+    </div>
+  </div>`
+});
+
+new Vue({
+  el:'#app',
+  data:{
+    data:[],cursor:null,loading:false,afc:0,
+    sel:'',ft:'all',sdQ:'',
+    cols:5,dark:true,sdOpen:false,isMob:false,showOut:false
+  },
+  computed:{
+    ukeys(){const s=new Set();this.data.forEach(i=>{const t=i.metadata&&i.metadata.ListType;if(t&&t!=='None'&&t!=='Block'&&t!=='White')s.add(t)});return Array.from(s)},
+    cnts(){const c={};this.data.forEach(i=>{const k=(i.metadata&&i.metadata.ListType)||'None';c[k]=(c[k]||0)+1});return c},
+    uncnt(){return this.data.filter(i=>{const t=i.metadata&&i.metadata.ListType;return!t||t==='None'||t==='Block'||t==='White'}).length},
+    forest(){
+      const r={};
+      this.ukeys.slice().sort().forEach(fk=>{
+        const pts=fk.split('/');let cur=r;
+        pts.forEach((p,i)=>{
+          if(!cur[p])cur[p]={fk:pts.slice(0,i+1).join('/'),kids:{},cnt:0,tot:0};
+          if(i===pts.length-1)cur[p].cnt=this.cnts[fk]||0;
+          cur=cur[p].kids;
         });
       });
-      return tree;
+      const roll=n=>{n.tot=n.cnt;Object.values(n.kids).forEach(k=>{roll(k);n.tot+=k.tot})};
+      Object.values(r).forEach(roll);return r;
     },
-    currentNode() {
-      let node = this.albumTree;
-      for (const s of this.panelPath) node = node[s]||{};
-      return node;
+    sdResults(){
+      if(!this.sdQ.trim())return[];
+      const q=this.sdQ.toLowerCase();
+      return this.ukeys.filter(k=>k.toLowerCase().includes(q)).sort();
     },
-    currentFolders() { return Object.keys(this.currentNode).filter(k=>k!=='__leaves__').sort(); },
-    currentLeafAlbums() { return (this.currentNode['__leaves__']||[]).sort((a,b)=>a.label.localeCompare(b.label)); },
-    filteredTableData() {
-      if (!this.selectedAlbum) return [];
-      return this.tableData.filter(item => {
-        const k = item.metadata?.ListType || 'None';
-        let matchAlbum = this.selectedAlbum === 'All' ? true
-          : this.selectedAlbum === 'None' ? k === 'None'
-          : k === this.selectedAlbum || k.startsWith(this.selectedAlbum+'/');
-        let matchType = true;
-        if (this.filterType !== 'all') {
-          const isPhoto = item.name.startsWith('A');
-          matchType = this.filterType === 'preview' ? isPhoto : !isPhoto;
-        }
-        return matchAlbum && matchType;
+    selSegs(){if(!this.sel||this.sel==='All'||this.sel==='None')return[];return this.sel.split('/')},
+    filtered(){
+      if(!this.sel)return[];
+      return this.data.filter(item=>{
+        const k=(item.metadata&&item.metadata.ListType)||'None';
+        const ma=this.sel==='All'?true:this.sel==='None'?(k==='None'||k==='Block'||k==='White'):(k===this.sel||k.startsWith(this.sel+'/'));
+        if(!ma)return false;
+        if(this.ft!=='all'){const p=item.name.startsWith('A');if(this.ft==='preview'&&!p)return false;if(this.ft==='original'&&p)return false}
+        return true;
       });
     }
   },
-  watch: {
-    selectedAlbum(v) { if (v) { this.autoFetchCount=0; this.$nextTick(()=>this.triggerAutoLoad()); } },
-    filterType()     { if (this.selectedAlbum) { this.autoFetchCount=0; this.$nextTick(()=>this.triggerAutoLoad()); } }
+  watch:{
+    sel(v){if(v){this.afc=0;this.$nextTick(()=>this.auto())}},
+    ft(){if(this.sel){this.afc=0;this.$nextTick(()=>this.auto())}}
   },
-  methods: {
-    toggleAlbumPanel() { this.albumPanelOpen = !this.albumPanelOpen; },
-    drillDown(f) { this.panelPath.push(f); },
-    navigateTo(i) { this.panelPath = i===null ? [] : this.panelPath.slice(0, i+1); },
-    selectAlbum(k, l) { this.selectedAlbum=k; this.selectedAlbumLabel=l; this.albumPanelOpen=false; },
-    getFolderCount(folder) {
-      const prefix = [...this.panelPath, folder].join('/');
-      let c = 0;
-      this.tableData.forEach(i => { const k=i.metadata?.ListType||''; if (k===prefix||k.startsWith(prefix+'/')) c++; });
-      return c||'';
+  methods:{
+    pick(k){this.sel=k;if(this.isMob)this.sdOpen=false},
+    setCols(n){this.cols=n;localStorage.setItem('imm_cols',n)},
+    toggleTheme(){
+      this.dark=!this.dark;
+      const t=this.dark?'dark':'light';
+      document.documentElement.setAttribute('data-theme',t);
+      localStorage.setItem('gallery_theme',t);
     },
-    isVideo(n) { return /\.(mp4|webm|ogg|mov)$/i.test(n); },
-    getAlbumLabel(item) {
-      const k = (item.metadata?.ListType && item.metadata.ListType!=='None') ? item.metadata.ListType : '未分类';
-      return k.split('/').pop();
+    isVid(n){return/\.(mp4|webm|ogg|mov|avi)$/i.test(n)},
+    aLabel(item){const k=(item.metadata&&item.metadata.ListType&&item.metadata.ListType!=='None')?item.metadata.ListType:'未分类';return k.split('/').pop()},
+    fName(item){return(item.metadata&&item.metadata.fileName)||item.name},
+    doCopy(key){
+      const t=location.origin+'/file/'+key;
+      (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject())
+        .catch(()=>{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;clip:rect(0 0 0 0)';document.body.appendChild(a);a.select();document.execCommand('copy');document.body.removeChild(a)});
+      this.$message({message:'链接已复制',type:'success',duration:1600});
     },
-    getFileName(item) { return item.metadata?.fileName || item.name; },
-    handleCopy(key) {
-      const text = `${location.origin}/file/${key}`;
-      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).catch(()=>{
-        const ta=document.createElement('textarea'); ta.value=text;
-        ta.style.cssText='position:fixed;top:0;clip:rect(0 0 0 0)';
-        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-      });
-      this.$message({ message:'链接已复制', type:'success', duration:1600 });
+    async loadMore(ini=false){
+      if(this.loading)return;if(!ini&&!this.cursor)return;
+      this.loading=true;
+      let url='./api/manage/list?limit=300';
+      if(!ini&&this.cursor)url+='&cursor='+encodeURIComponent(this.cursor);
+      try{
+        const res=await fetch(url,{method:'GET',credentials:'include'});
+        if(res.status===401){location.href='./api/manage/login';return}
+        const d=await res.json();
+        if(ini)this.data=[];
+        this.data.push(...(d.keys||[]).map(i=>Object.freeze(i)));
+        this.cursor=d.list_complete?null:d.cursor;
+      }catch{this.$message.error('加载失败，请检查网络')}
+      finally{this.loading=false;this.$nextTick(()=>this.auto())}
     },
-    handleLogout() { location.href='./api/manage/logout'; },
-    async loadMore(isInitial=false) {
-      if (this.isLoading) return;
-      if (!isInitial && !this.nextCursor) return;
-      this.isLoading = true;
-      let url = './api/manage/list?limit=300';
-      if (!isInitial && this.nextCursor) url += '&cursor='+encodeURIComponent(this.nextCursor);
-      try {
-        const res = await fetch(url, { method:'GET', credentials:'include' });
-        if (res.status===401) { location.href='./api/manage/login'; return; }
-        const data = await res.json();
-        this.tableData.push(...(data.keys||[]).map(i=>Object.freeze(i)));
-        this.nextCursor = data.list_complete ? null : data.cursor;
-      } catch { this.$message.error('加载失败'); }
-      finally {
-        this.isLoading=false;
-        this.$nextTick(()=>this.triggerAutoLoad());
-      }
-    },
-    triggerAutoLoad() {
-      if (!this.selectedAlbum) return;
-      if (this.filteredTableData.length<15 && this.nextCursor && !this.isLoading && this.autoFetchCount<5) {
-        this.autoFetchCount++; this.loadMore(false);
-      }
-    }
+    auto(){if(!this.sel)return;if(this.filtered.length<15&&this.cursor&&!this.loading&&this.afc<5){this.afc++;this.loadMore(false)}},
+    chkMob(){this.isMob=window.innerWidth<1000}
   },
-  mounted() {
+  mounted(){
+    this.chkMob();
+    window.addEventListener('resize',this.chkMob);
+    document.addEventListener('click',e=>{
+      if(this.isMob&&this.sdOpen&&!e.target.closest('.sd')&&!e.target.closest('.hbg-btn'))this.sdOpen=false
+    });
+    const th=localStorage.getItem('gallery_theme')||'dark';
+    this.dark=th==='dark';document.documentElement.setAttribute('data-theme',th);
+    this.cols=parseInt(localStorage.getItem('imm_cols'))||5;
     fetch('./api/manage/check',{method:'GET',credentials:'include'})
-      .then(r=>r.text()).then(t=>{
-        if (t==='true') this.showLogoutButton=true;
-        else if (t!=='Not using basic auth.') location.href='./api/manage/login';
-      });
-    document.addEventListener('click', ()=>{ this.albumPanelOpen=false; });
+      .then(r=>r.text())
+      .then(t=>{if(t==='true')this.showOut=true;else if(t!=='Not using basic auth.')location.href='./api/manage/login'});
     this.loadMore(true);
-  }
-})
+  },
+  beforeDestroy(){window.removeEventListener('resize',this.chkMob)}
+});
 </script>
 </body>
 </html>
